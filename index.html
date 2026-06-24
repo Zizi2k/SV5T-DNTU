@@ -522,12 +522,18 @@
 <script>
 // Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbw9wXXpatV2rCNmCsG0-rUDazA9c3uYf0NliCX3kDy8NDAbgPrVNiEwcgtavoKI0ipJ/exec';
+const APP_BUILD = '20260624-fetch';
 
-let API_URL = localStorage.getItem('SV5T_API_URL') || DEFAULT_API_URL;
-if (API_URL && API_URL.indexOf('AKfycbwbXCFlkv') >= 0) {
-  API_URL = DEFAULT_API_URL;
-  localStorage.removeItem('SV5T_API_URL');
-}
+let API_URL = DEFAULT_API_URL;
+try {
+  const saved = localStorage.getItem('SV5T_API_URL');
+  if (saved && saved.indexOf('script.google.com') >= 0 && saved.indexOf('/exec') >= 0) API_URL = saved;
+  if (localStorage.getItem('SV5T_BUILD') !== APP_BUILD) {
+    localStorage.removeItem('SV5T_API_URL');
+    localStorage.setItem('SV5T_BUILD', APP_BUILD);
+    API_URL = DEFAULT_API_URL;
+  }
+} catch (e) {}
 const APP = {
   token: localStorage.getItem('SV5T_TOKEN') || '',
   user: JSON.parse(localStorage.getItem('SV5T_USER') || 'null'),
@@ -547,20 +553,21 @@ function moneySize(b){const n=Number(b||0); if(n<1024)return n+' B'; if(n<104857
 function fmtDate(s){if(!s)return''; const d=new Date(s); return isNaN(d)?esc(s):d.toLocaleString('vi-VN')}
 function badge(st){if(st==='PASS'||st===true||st==='ĐẠT')return'<span class="pill ok">Đạt</span>'; if(st==='FAIL'||st===false||st==='KHÔNG ĐẠT')return'<span class="pill bad">Không đạt</span>'; if(st==='NEED_MORE'||st==='NEED_SUPPLEMENT')return'<span class="pill warn">Cần bổ sung</span>'; if(st==='SUBMITTED')return'<span class="pill blue">Đã nộp</span>'; if(st==='FINALIZED')return'<span class="pill ok">Đã chốt</span>'; if(st==='DRAFT')return'<span class="pill warn">Nháp</span>'; return'<span class="pill warn">Chờ duyệt</span>'}
 function showTab(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active'); if(btn)btn.classList.add('active')}
-function apiReady(){return API_URL && API_URL.indexOf('script.google.com')>=0 && API_URL.indexOf('PASTE_')<0}
-function jsonp(action, params={}){
-  return new Promise((resolve,reject)=>{
-    if(!apiReady()) return reject(new Error('Chưa cấu hình Apps Script Web App URL trong file HTML.'));
-    const cb='SV5T_CB_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const qs=new URLSearchParams({...params,action,callback:cb});
-    const s=document.createElement('script');
-    const timer=setTimeout(()=>{cleanup();reject(new Error('API không phản hồi.'))},30000);
-    function cleanup(){clearTimeout(timer);delete window[cb];s.remove()}
-    window[cb]=data=>{cleanup(); data&&data.ok?resolve(data):reject(new Error((data&&data.message)||'API lỗi'))};
-    s.src=API_URL+(API_URL.includes('?')?'&':'?')+qs.toString();
-    s.onerror=()=>{cleanup();reject(new Error('Không gọi được API. Kiểm tra link Web App.'))};
-    document.body.appendChild(s);
-  });
+function apiReady(){return API_URL && API_URL.indexOf('script.google.com')>=0 && API_URL.indexOf('/exec')>=0 && API_URL.indexOf('PASTE_')<0}
+async function jsonp(action, params={}){
+  if(!apiReady()) throw new Error('Chưa cấu hình Apps Script Web App URL trong file HTML.');
+  const qs=new URLSearchParams({...params,action});
+  const url=API_URL+(API_URL.includes('?')?'&':'?')+qs.toString();
+  try{
+    const res=await fetch(url,{method:'GET',credentials:'omit',cache:'no-store',redirect:'follow'});
+    if(!res.ok) throw new Error('API HTTP '+res.status+'. Kiểm tra deploy Web App (Bất kỳ ai).');
+    const data=await res.json();
+    if(data&&data.ok) return data;
+    throw new Error((data&&data.message)||'API lỗi');
+  }catch(err){
+    if(err.message&&(err.message.indexOf('API HTTP')>=0||err.message.indexOf('API lỗi')>=0)) throw err;
+    throw new Error('Không gọi được API. Kiểm tra link Web App. '+(err.message||''));
+  }
 }
 function postApi(action,payload={}){
   return new Promise((resolve,reject)=>{
@@ -601,7 +608,7 @@ async function testApi(){
     const box=document.getElementById('apiStatusBox');
     if(box){
       box.style.display='block';
-      box.innerHTML='<div class="alert bad"><b>Backend chưa kết nối được.</b> '+esc(err.message)+'<br><span class="muted">Kiểm tra Google Apps Script đã deploy Web App (Bất kỳ ai) và URL /exec đúng. Test: <a href="'+esc(API_URL+'?action=ping')+'" target="_blank">mở link ping</a></span></div>';
+      box.innerHTML='<div class="alert bad"><b>Backend chưa kết nối được.</b> '+esc(err.message)+'<br><span class="muted">API: '+esc(API_URL)+'<br>Test: <a href="'+esc(API_URL+'?action=ping')+'" target="_blank">mở link ping</a> — nếu ping OK mà trang vẫn lỗi, bấm Ctrl+F5 hoặc xóa cache trình duyệt.</span></div>';
     }
   }
 }
