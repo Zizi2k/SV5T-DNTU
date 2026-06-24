@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Hệ thống xét Sinh viên 5 tốt</title>
+  <style>
+    :root{
+      --bg:#eef2f7;--paper:#fff;--ink:#1f2937;--muted:#64748b;--line:#d7dde7;
+      --navy:#173b6c;--navy2:#102a4d;--blue:#0284c7;--sky:#0ea5e9;--green:#16a34a;--red:#dc2626;--amber:#d97706;
+      --blueBg:#eef7ff;--greenBg:#ecfdf5;--redBg:#fef2f2;--amberBg:#fff7ed;--soft:#f8fafc;
+      --shadow:0 12px 28px rgba(15,23,42,.08)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink);line-height:1.5}
+    a{color:#0369a1;text-decoration:none;font-weight:700}
+    .app{max-width:1680px;width:100%;margin:0 auto;padding:12px}
+    .shell{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+    .topbar{height:38px;background:#0b8fe5;color:#fff;display:flex;align-items:center;gap:12px;padding:0 18px;font-size:13px}
+    .hamb{font-size:22px;line-height:1}.topbar-title{font-weight:700}.topbar-spacer{flex:1}.topbar-user{opacity:.95}
+    .masthead{text-align:center;padding:22px 24px 12px;border-bottom:3px solid var(--navy);background:#fff}
+    .org{font-family:"Times New Roman",Times,serif;text-transform:uppercase;font-weight:700;font-size:18px;line-height:1.45;color:#111827}
+    .underline{width:210px;border-top:1.5px solid #111;margin:8px auto 0}
+    .hero{padding:22px 28px;background:linear-gradient(180deg,#fff,#f8fafc);border-bottom:1px solid var(--line);text-align:center}
+    .hero h1{font-family:"Times New Roman",Times,serif;margin:0;color:var(--navy);font-size:30px;text-transform:uppercase;letter-spacing:.02em}
+    .hero p{margin:8px auto 0;max-width:900px;color:#334155}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;background:#f8fafc;border-bottom:1px solid var(--line);padding:10px 14px}
+    .tab{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+    .tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
+    .content{padding:22px 24px 32px;overflow-x:hidden}
+    .panel{display:none}.panel.active{display:block}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .col-12{grid-column:span 12}.col-8{grid-column:span 8}.col-7{grid-column:span 7}.col-6{grid-column:span 6}.col-5{grid-column:span 5}.col-4{grid-column:span 4}.col-3{grid-column:span 3}
+    .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+    .box-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px}
+    .box-title h2,.box-title h3{font-family:"Times New Roman",Times,serif;margin:0;color:var(--navy);font-size:24px}
+    .desc{margin-top:5px;color:var(--muted);font-size:14px}
+    label{display:block;margin:0 0 6px;font-weight:700;font-size:14px}
+    input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:9px;background:#fff;padding:10px 11px;font-size:14px;outline:none}
+    textarea{min-height:78px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(23,59,108,.12)}
+    .field-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:13px}.field.col-12{grid-column:span 12}.field.col-8{grid-column:span 8}.field.col-6{grid-column:span 6}.field.col-4{grid-column:span 4}.field.col-3{grid-column:span 3}
+    .req{color:var(--red)}.muted{font-size:13px;color:var(--muted)}.small{font-size:12px}
+    .btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+    .btn.primary{background:var(--navy);color:#fff}.btn.primary:hover{background:var(--navy2)}
+    .btn.secondary{background:#e5e7eb;color:#111827}.btn.ok{background:var(--green);color:#fff}.btn.bad{background:var(--red);color:#fff}.btn.warn{background:var(--amber);color:#fff}.btn.blue{background:#0284c7;color:#fff}.btn.small{font-size:12px;padding:8px 10px}.btn:disabled{opacity:.6;cursor:not-allowed}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.toolbar input,.toolbar select{max-width:310px}
+    .alert{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:13px 0;font-size:14px}
+    .alert.info{background:var(--blueBg);border-color:#bae6fd;color:#075985}.alert.ok{background:var(--greenBg);border-color:#bbf7d0;color:#166534}.alert.bad{background:var(--redBg);border-color:#fecaca;color:#991b1b}.alert.warn{background:var(--amberBg);border-color:#fed7aa;color:#9a3412}
+    .pill{display:inline-flex;align-items:center;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;background:#e5e7eb;color:#374151;white-space:nowrap}
+    .pill.ok{background:var(--greenBg);color:#166534}.pill.bad{background:var(--redBg);color:#991b1b}.pill.warn{background:var(--amberBg);color:#9a3412}.pill.blue{background:var(--blueBg);color:#0369a1}.pill.navy{background:#e8eef7;color:var(--navy)}
+    #studentAuthBox,#reviewerLoginBox{grid-column:1/-1;width:100%;max-width:520px;justify-self:center;margin:24px auto 34px}
+    #reviewerLoginBox{max-width:420px}
+    #studentAuthBox .box-title,#reviewerLoginBox .box-title{display:block;text-align:center}
+    table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}
+    th,td{padding:10px 11px;border:1px solid var(--line);font-size:13px;vertical-align:top}
+    th{background:#f1f5f9;color:var(--navy);text-transform:uppercase;font-size:12px;text-align:center}
+    .criteria-table{border-collapse:collapse;margin:14px 0 22px}
+    .criteria-table th{position:sticky;top:0;z-index:2}
+    .group-cell{background:#f8fafc;color:var(--navy);font-weight:800;text-align:center;vertical-align:middle;min-width:140px}
+    .order-cell{text-align:center;color:#475569;font-weight:700;white-space:nowrap}
+    .criterion-title{font-weight:700;color:#111827}.criterion-help{margin-top:4px;color:var(--muted);font-size:12px}
+    .auto-note{background:var(--blueBg);border:1px solid #bae6fd;border-radius:8px;padding:8px;color:#075985}
+    .evidence-panel{border:1px dashed #94a3b8;background:#fcfdff;border-radius:10px;padding:10px;min-width:300px}
+    .evidence-tools{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .evidence-row{border:1px solid #dbe3ef;background:#fff;border-radius:10px;padding:10px;margin:8px 0}
+    .evidence-row-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+    .mc-badge{font-weight:800;color:#075985;background:#e0f2fe;border-radius:999px;padding:4px 8px;font-size:12px}
+    .file-disabled{background:#f1f5f9;color:#64748b}
+    .existing-files{margin:8px 0 0;padding-left:18px}.existing-files li{margin:5px 0}
+    .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:12px 0}.stat{border:1px solid var(--line);border-radius:12px;padding:12px}.stat .num{font-size:22px;font-weight:800;color:var(--navy)}.stat .label{font-size:12px;color:var(--muted)}
+    .loading{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;z-index:9999}.loading.active{display:flex}.loading div{background:#fff;border-radius:14px;padding:18px 22px;font-weight:700;box-shadow:var(--shadow)}
+    .footer{text-align:center;color:var(--muted);font-size:13px;padding:18px 24px 24px}
+
+    /* Hiển thị tiếng Việt rõ ràng, tránh bể chữ trong bảng tiêu chí */
+    body,input,select,textarea,button,table,td,th{
+      font-family:Arial,Tahoma,"Segoe UI",Roboto,sans-serif;
+      text-rendering:optimizeLegibility;
+      -webkit-font-smoothing:antialiased;
+    }
+    .criteria-table td,.criteria-table th{
+      white-space:normal;
+      word-break:normal;
+      overflow-wrap:break-word;
+      line-height:1.65;
+    }
+    .criteria-table td:nth-child(3){
+      min-width:420px;
+    }
+    .criterion-title{
+      font-size:14px;
+      line-height:1.65;
+      font-weight:700;
+      word-break:normal;
+      overflow-wrap:break-word;
+    }
+    .raw-criterion{
+      display:block;
+      padding:2px 0;
+    }
+
+    .criteria-table{
+      min-width:1680px;
+      table-layout:auto;
+    }
+    .criteria-section-row td{
+      background:#f8fafc;
+      color:#0f3a66;
+      font-weight:800;
+      font-size:14px;
+      padding:9px 12px;
+      border-top:2px solid #d7dde7;
+      border-bottom:1px solid #d7dde7;
+    }
+    .criteria-section-title{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .criteria-section-title::before{
+      content:"";
+      width:6px;
+      height:18px;
+      border-radius:3px;
+      background:#0b8fe5;
+      display:inline-block;
+    }
+    .criteria-table td:nth-child(3){
+      min-width:480px;
+    }
+    .criteria-table td:nth-child(4){
+      min-width:260px;
+    }
+    .criteria-table td:nth-child(5){
+      min-width:430px;
+    }
+
+    /* Bảng tiêu chí full, không bị mất cột; tự cuộn ngang trên màn hình nhỏ */
+    .table-scroll{
+      width:100%;
+      max-width:100%;
+      overflow-x:auto;
+      overflow-y:visible;
+      -webkit-overflow-scrolling:touch;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+      margin:14px 0 22px;
+    }
+    .table-scroll .criteria-table{
+      margin:0;
+      width:100%;
+      min-width:1680px;
+      border:0;
+    }
+    .table-scroll::-webkit-scrollbar{height:10px}
+    .table-scroll::-webkit-scrollbar-track{background:#eef2f7;border-radius:999px}
+    .table-scroll::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px}
+    .criteria-table th,
+    .criteria-table td{
+      vertical-align:top;
+    }
+    .criteria-table th:nth-child(1){width:54px}
+    .criteria-table th:nth-child(2){width:145px}
+    .criteria-table th:nth-child(3){width:38%}
+    .criteria-table th:nth-child(4){width:22%}
+    .criteria-table th:nth-child(5){width:30%}
+    .criteria-section-row td{
+      background:#f8fafc;
+    }
+    .evidence-panel{
+      min-width:0;
+      width:100%;
+    }
+    .evidence-tools{
+      flex-wrap:wrap;
+    }
+    .existing-files{
+      word-break:normal;
+      overflow-wrap:anywhere;
+    }
+    .form-scroll-note{
+      display:none;
+      color:#075985;
+      background:#eef7ff;
+      border:1px solid #bae6fd;
+      border-radius:10px;
+      padding:9px 12px;
+      margin:10px 0;
+      font-size:13px;
+      font-weight:700;
+    }
+    @media(max-width:980px){
+      .col-8,.col-7,.col-6,.col-5,.col-4,.col-3,.field.col-8,.field.col-6,.field.col-4,.field.col-3{grid-column:span 12}
+      .stats{grid-template-columns:repeat(2,1fr)}
+      .criteria-table{display:block;overflow-x:auto;white-space:normal}
+    }
+  
+
+    /* Cột kết quả và lý do duyệt */
+    .result-cell{min-width:120px;text-align:center;vertical-align:middle}
+    .reason-cell{min-width:240px;color:#334155;font-size:13px;line-height:1.55;white-space:normal;overflow-wrap:anywhere}
+    .reason-cell .reason-empty{color:#94a3b8;font-style:italic}
+    .supplement-hint{margin-top:8px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:7px 9px;font-size:12px;font-weight:700}
+    .criteria-table th:nth-child(6){width:120px}
+    .criteria-table th:nth-child(7){width:240px}
+
+
+    /* UI trực quan hơn */
+    .quick-cards{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+      margin:12px 0 16px;
+    }
+    .quick-card{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:14px;
+      padding:14px;
+      box-shadow:0 8px 18px rgba(15,23,42,.04);
+    }
+    .quick-card .icon{
+      width:36px;height:36px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      background:#eef7ff;color:#075985;font-weight:900;margin-bottom:8px;
+    }
+    .quick-card b{display:block;color:var(--navy);margin-bottom:4px}
+    .quick-card span{font-size:13px;color:var(--muted)}
+    .admin-tabs{
+      display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;
+      border-bottom:1px solid var(--line);padding-bottom:10px;
+    }
+    .admin-tab-btn{
+      border:1px solid var(--line);background:#fff;color:var(--navy);
+      padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer;
+    }
+    .admin-tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .danger-zone{
+      border:1px solid #fecaca;background:#fff7f7;border-radius:14px;padding:16px;margin-top:12px;
+    }
+    .danger-zone h3{margin:0 0 8px;color:#991b1b}
+    .account-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .mini-note{font-size:12px;color:var(--muted);margin-top:4px}
+    @media(max-width:900px){
+      .quick-cards{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:560px){
+      .quick-cards{grid-template-columns:1fr}
+    }
+    /* Quy trình hồ sơ rõ ràng hơn */
+    .workflow-box{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin:12px 0 16px;
+    }
+    .workflow-step{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#f8fafc;
+      padding:10px;
+      font-size:13px;
+    }
+    .workflow-step b{display:block;color:var(--navy);margin-bottom:4px}
+    .workflow-step.active{background:#eef7ff;border-color:#7dd3fc}
+    .workflow-step.warn{background:#fff7ed;border-color:#fed7aa}
+    .workflow-step.done{background:#ecfdf5;border-color:#bbf7d0}
+    .locked-evidence{
+      border:1px dashed #cbd5e1;
+      border-radius:10px;
+      padding:9px;
+      color:#64748b;
+      background:#f8fafc;
+      font-size:13px;
+    }
+    @media(max-width:720px){
+      .workflow-box{grid-template-columns:1fr}
+    }
+    @media(max-width:1200px){
+      .app{padding:8px}
+      .content{padding:16px 14px 24px}
+      .hero h1{font-size:25px}
+      .form-scroll-note{display:block}
+    }
+    @media(max-width:720px){
+      .topbar{height:auto;min-height:38px;align-items:flex-start;padding:9px 12px;flex-wrap:wrap}
+      .masthead{padding:16px 12px 10px}
+      .org{font-size:14px}
+      .hero{padding:18px 12px}
+      .hero h1{font-size:21px;line-height:1.35}
+      .tabs{padding:8px;gap:6px}
+      .tab{flex:1;padding:9px 10px}
+      .box{padding:14px}
+      .box-title{display:block}
+      #studentAuthBox,#reviewerLoginBox{max-width:100%;margin:12px auto 20px}
+      .field-grid{grid-template-columns:1fr}
+      .field.col-12,.field.col-8,.field.col-6,.field.col-4,.field.col-3{grid-column:span 1}
+      .stats{grid-template-columns:1fr 1fr}
+      .table-scroll .criteria-table{min-width:1480px}
+      .criteria-table th:nth-child(3){width:420px}
+      .criteria-table th:nth-child(4){width:260px}
+      .criteria-table th:nth-child(5){width:360px}
+    }
+
+    /* Fix hiển thị tiếng Việt + căn giữa tiêu chí lớn */
+    body,input,select,textarea,button,table,td,th{
+      font-family:Arial,Tahoma,"Segoe UI",Roboto,sans-serif !important;
+      text-rendering:geometricPrecision;
+      -webkit-font-smoothing:antialiased;
+    }
+    .criteria-table{
+      table-layout:fixed;
+      border-collapse:collapse;
+      background:#fff;
+    }
+    .criteria-table th{
+      background:#f1f5f9;
+      color:#0f2f57;
+      font-weight:800;
+      text-align:center;
+      vertical-align:middle;
+      letter-spacing:.01em;
+    }
+    .criteria-table td{
+      vertical-align:top;
+      line-height:1.6;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+      hyphens:none !important;
+    }
+    .criteria-table th:nth-child(1){width:58px}
+    .criteria-table th:nth-child(2){width:150px}
+    .criteria-table th:nth-child(3){width:520px}
+    .criteria-table th:nth-child(4){width:310px}
+    .criteria-table th:nth-child(5){width:440px}
+    .criteria-table th:nth-child(6){width:130px}
+    .criteria-table th:nth-child(7){width:260px}
+    .group-cell{
+      padding:0 !important;
+      vertical-align:middle !important;
+      text-align:center !important;
+      background:#f8fafc !important;
+    }
+    .group-label{
+      min-height:100%;
+      height:100%;
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:14px 10px;
+      color:#0f3a66;
+      font-weight:800;
+      line-height:1.5;
+      word-break:normal;
+      overflow-wrap:normal;
+      hyphens:none;
+    }
+    .order-cell{
+      vertical-align:middle !important;
+      text-align:center !important;
+      background:#fff;
+      font-weight:800;
+      color:#334155;
+    }
+    .criterion-title,
+    .raw-criterion{
+      display:block;
+      color:#111827;
+      font-weight:700;
+      line-height:1.65;
+      font-size:14px;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+      hyphens:none !important;
+    }
+    .criterion-help{
+      display:none !important;
+    }
+    .criteria-section-title{
+      font-weight:800;
+      color:#0f3a66;
+      line-height:1.5;
+    }
+    .evidence-panel{
+      min-width:0 !important;
+      width:100%;
+    }
+    .muted{
+      word-break:normal;
+      overflow-wrap:normal;
+      hyphens:none;
+    }
+    .reason-cell{
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+      hyphens:none !important;
+    }
+    .table-scroll .criteria-table{
+      min-width:1870px;
+    }
+    @media(max-width:720px){
+      .table-scroll .criteria-table{min-width:1580px}
+      .criteria-table th:nth-child(3){width:440px}
+      .criteria-table th:nth-child(4){width:260px}
+      .criteria-table th:nth-child(5){width:360px}
+    }
+</style>
+</head>
+<body>
+<div class="loading" id="loading"><div>Đang xử lý dữ liệu...</div></div>
+<div class="app">
+  <div class="shell">
+    <div class="topbar"><span class="hamb">≡</span><span class="topbar-title">Tiêu chuẩn Sinh viên 5 tốt</span><span class="topbar-spacer"></span><span class="topbar-user" id="topUser"></span></div>
+    <div class="masthead"><div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>KHOA CÔNG NGHỆ THÔNG TIN</div><div class="underline"></div></div>
+    <div class="hero"><h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1><p>Trang đăng ký, nộp minh chứng, chấm duyệt và quản trị tiêu chí xét Sinh viên 5 tốt.</p></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="student" onclick="showTab('student',this)">Sinh viên</button>
+      <button class="tab" data-tab="reviewer" onclick="showTab('reviewer',this)">Quản lý</button>
+    </div>
+    <div class="content">
+      <section class="panel active" id="tab-student">
+        <div class="grid">
+          <div class="col-5 box" id="studentAuthBox">
+            <div class="box-title"><div><h2>Đăng nhập sinh viên</h2><div class="desc">Sinh viên đăng nhập để nộp hồ sơ, tải minh chứng, theo dõi kết quả và bổ sung khi cần.</div></div></div>
+            <div class="field-grid">
+              <div class="field col-6"><label>Email sinh viên</label><input id="s_username" type="email" placeholder="email sinh viên"></div>
+              <div class="field col-6"><label>Mật khẩu</label><input id="s_password" type="password" placeholder="Mật khẩu"></div>
+            </div>
+            <div class="toolbar" style="margin-top:12px">
+              <button class="btn primary" onclick="login('student')">Đăng nhập</button>
+              <button class="btn secondary" onclick="toggleRegister()">Đăng ký tài khoản</button>
+            </div>
+            <div id="registerBox" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+              <div class="alert info"><b>Đăng ký tài khoản sinh viên:</b> nhập email sinh viên và mật khẩu ở phía trên, sau khi đăng nhập hệ thống sẽ yêu cầu nhập thông tin cá nhân.</div>
+              <button class="btn primary" onclick="registerStudent()">Tạo tài khoản sinh viên</button>
+            </div>
+            <div id="studentAuthResult"></div>
+          </div>
+
+          <div class="col-12 box" id="studentProfileBox" style="display:none">
+            <div class="box-title"><div><h2>Hồ sơ của sinh viên</h2><div class="desc" id="studentInfoText"></div></div><div class="toolbar"><button class="btn secondary small" onclick="changeMyPassword()">Đổi mật khẩu</button><button class="btn secondary small" onclick="logout()">Đăng xuất</button></div></div>
+            <button class="btn primary" onclick="loadMyApplication()">Tải lại hồ sơ</button>
+            <div id="studentStatus"></div>
+            <div id="workflowBox"></div>
+          </div>
+
+          <div class="col-12 box" id="studentApplicationBox" style="display:none">
+            <div class="box-title"><div><h2>Thông tin cá nhân</h2><div class="desc">Vì xét ở cấp Khoa, sinh viên chỉ cần nhập thông tin cơ bản rồi nộp minh chứng theo tiêu chí.</div></div></div>
+            <div class="quick-cards">
+              <div class="quick-card"><div class="icon">1</div><b>Nhập thông tin</b><span>Họ tên, ngày sinh, lớp, chức vụ, số điện thoại.</span></div>
+              <div class="quick-card"><div class="icon">2</div><b>Tải minh chứng</b><span>Nhập tên minh chứng rồi chọn file tương ứng.</span></div>
+              <div class="quick-card"><div class="icon">3</div><b>Chờ duyệt</b><span>Hồ sơ sẽ khóa khi đã nộp, chỉ mở khi cần bổ sung.</span></div>
+              <div class="quick-card"><div class="icon">4</div><b>Xem kết quả</b><span>Theo dõi cột Kết quả và Lý do cho từng tiêu chí.</span></div>
+            </div>
+            <div class="field-grid">
+              <input id="app_schoolYear" type="hidden">
+              <div class="field col-6"><label>Họ tên <span class="req">*</span></label><input id="app_fullName" placeholder="Nhập họ và tên"></div>
+              <div class="field col-3"><label>Giới tính <span class="req">*</span></label><select id="app_gender"><option value="">Chọn</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option><option value="Khác">Khác</option></select></div>
+              <div class="field col-3"><label>Ngày sinh <span class="req">*</span></label><input id="app_birthDate" type="date"></div>
+              <div class="field col-3"><label>Dân tộc <span class="req">*</span></label><input id="app_ethnicity" placeholder="VD: Kinh"></div>
+              <div class="field col-3"><label>Sinh viên năm thứ <span class="req">*</span></label><select id="app_yearOfStudy"><option value="">Chọn</option><option value="1">Năm 1</option><option value="2">Năm 2</option><option value="3">Năm 3</option><option value="4">Năm 4</option><option value="5">Khác</option></select></div>
+              <div class="field col-3"><label>Lớp <span class="req">*</span></label><select id="app_className"><option value="">Chọn lớp</option><option value="22DTH1">22DTH1</option><option value="22DTH2">22DTH2</option><option value="22DTH3">22DTH3</option><option value="22DTH4">22DTH4</option><option value="22DTH5">22DTH5</option><option value="22DTH6">22DTH6</option><option value="22DTH7">22DTH7</option><option value="23DTH1">23DTH1</option><option value="23DTH2">23DTH2</option><option value="23DTH3">23DTH3</option><option value="23DTH4">23DTH4</option><option value="23DTH5">23DTH5</option><option value="24DTH1">24DTH1</option><option value="24DTH2">24DTH2</option><option value="24DTH3">24DTH3</option><option value="24DPM1">24DPM1</option><option value="25DTH">25DTH</option><option value="25DPM">25DPM</option><option value="25DTN">25DTN</option></select></div>
+              <div class="field col-3"><label>Chức vụ Đoàn, Hội <span class="req">*</span></label><input id="app_unionPosition" placeholder="VD: Đoàn viên / Chi hội trưởng"></div>
+              <div class="field col-4"><label>Số điện thoại <span class="req">*</span></label><input id="app_phone" placeholder="09xxxxxxxx"></div>
+              <div class="field col-8"><label>Ghi chú hồ sơ</label><input id="app_studentNote" placeholder="Ghi chú thêm nếu có"></div>
+            </div>
+            <div class="alert info"><b>Quy trình minh chứng:</b> Chọn tiêu chí nhỏ → bấm “Thêm minh chứng” → nhập tên minh chứng → chọn file tài liệu tương ứng. Hệ thống sẽ hiển thị STT tài liệu và mã minh chứng liên quan theo từng tiêu chí.</div>
+            <div class="form-scroll-note">Bảng tiêu chí có thể kéo ngang trên điện thoại/màn hình nhỏ để xem đầy đủ cột minh chứng.</div>
+            <div id="criteriaContainer"></div>
+            <div class="toolbar">
+              <button class="btn secondary" id="btnSaveDraft" onclick="saveApplication(false)">Lưu nháp</button>
+              <button class="btn primary" id="btnSubmitApp" onclick="saveApplication(true)">Nộp hồ sơ</button>
+            </div>
+            <div id="applicationResult"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="tab-reviewer">
+        <div class="grid">
+          <div class="col-4 box" id="reviewerLoginBox">
+            <div class="box-title"><div><h2>Đăng nhập quản lý</h2><div class="desc">Dành cho người chấm và admin. Tài khoản quản lý do admin cấp, không tự đăng ký.</div></div></div>
+            <label>Email / tài khoản quản lý</label><input id="a_username" value="">
+            <label style="margin-top:10px">Mật khẩu</label><input id="a_password" type="password" value="">
+            <button class="btn primary" style="margin-top:12px;width:100%" onclick="login('admin')">Đăng nhập</button>
+            <div id="adminAuthResult"></div>
+          </div>
+
+          <div class="col-12 box" id="reviewerDashboard" style="display:none">
+            <div class="box-title"><div><h2>Bảng điều khiển</h2><div class="desc" id="adminInfoText"></div></div><div class="toolbar"><button class="btn secondary small" onclick="changeMyPassword()">Đổi mật khẩu</button><button class="btn secondary small" onclick="logout()">Đăng xuất</button></div></div>
+            <div id="statsBox" class="stats"></div>
+            <div class="admin-tabs" id="adminTabs">
+              <button class="admin-tab-btn active" onclick="showAdminSection('applications',this)">Hồ sơ</button>
+              <button class="admin-tab-btn" onclick="showAdminSection('users',this)">Tài khoản</button>
+              <button class="admin-tab-btn" onclick="showAdminSection('criteria',this)">Tiêu chí</button>
+              <button class="admin-tab-btn" onclick="showAdminSection('data',this)">Dữ liệu</button>
+            </div>
+            <div class="toolbar">
+              <input id="filterQ" placeholder="Tìm MSSV, họ tên, lớp, khoa...">
+              <select id="filterStatus"><option value="">Tất cả trạng thái</option><option value="SUBMITTED">Đã nộp</option><option value="NEED_SUPPLEMENT">Cần bổ sung</option><option value="FINALIZED">Đã chốt</option></select>
+              <button class="btn primary" onclick="loadApplications()">Lọc</button>
+              <button class="btn secondary" onclick="exportResults()">Xuất kết quả</button>
+            </div>
+            <div id="applicationList"></div>
+          </div>
+
+          <div class="col-12 box" id="userManageBox" style="display:none"></div>
+          <div class="col-12 box" id="criteriaManageBox" style="display:none"></div>
+          <div class="col-12 box" id="dataToolsBox" style="display:none"></div>
+          <div class="col-12 box" id="detailBox" style="display:none"></div>
+        </div>
+      </section>
+    </div>
+    <div class="footer">Hệ thống xét Sinh viên 5 tốt - Khoa Công nghệ thông tin</div>
+  </div>
+</div>
+
+<script>
+// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwbXCFlkvPAWLb6D2LqflqxxmWdbIAVCaAfgG2TW3uPy-7HovD8a0EQjDSRUbX3JD_9mw/exec';
+
+let API_URL = localStorage.getItem('SV5T_API_URL') || DEFAULT_API_URL;
+const APP = {
+  token: localStorage.getItem('SV5T_TOKEN') || '',
+  user: JSON.parse(localStorage.getItem('SV5T_USER') || 'null'),
+  criteria: [], groupedCriteria: [], myApp: null, maxFileMb: 8
+};
+
+
+if(!window.CSS) window.CSS = {};
+if(!CSS.escape) CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+function displayGroupName(name){
+  return String(name || '').replace(/^\s*\d+\s*[\.\)]\s*/, '').trim();
+}
+
+function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[m]))}
+function showLoading(v){document.getElementById('loading').classList.toggle('active',!!v)}
+function moneySize(b){const n=Number(b||0); if(n<1024)return n+' B'; if(n<1048576)return(n/1024).toFixed(1)+' KB'; return(n/1048576).toFixed(2)+' MB'}
+function fmtDate(s){if(!s)return''; const d=new Date(s); return isNaN(d)?esc(s):d.toLocaleString('vi-VN')}
+function badge(st){if(st==='PASS'||st===true||st==='ĐẠT')return'<span class="pill ok">Đạt</span>'; if(st==='FAIL'||st===false||st==='KHÔNG ĐẠT')return'<span class="pill bad">Không đạt</span>'; if(st==='NEED_MORE'||st==='NEED_SUPPLEMENT')return'<span class="pill warn">Cần bổ sung</span>'; if(st==='SUBMITTED')return'<span class="pill blue">Đã nộp</span>'; if(st==='FINALIZED')return'<span class="pill ok">Đã chốt</span>'; if(st==='DRAFT')return'<span class="pill warn">Nháp</span>'; return'<span class="pill warn">Chờ duyệt</span>'}
+function showTab(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active'); if(btn)btn.classList.add('active')}
+function apiReady(){return API_URL && API_URL.indexOf('script.google.com')>=0 && API_URL.indexOf('PASTE_')<0}
+function jsonp(action, params={}){
+  return new Promise((resolve,reject)=>{
+    if(!apiReady()) return reject(new Error('Chưa cấu hình Apps Script Web App URL trong file HTML.'));
+    const cb='SV5T_CB_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const qs=new URLSearchParams({...params,action,callback:cb});
+    const s=document.createElement('script');
+    const timer=setTimeout(()=>{cleanup();reject(new Error('API không phản hồi.'))},30000);
+    function cleanup(){clearTimeout(timer);delete window[cb];s.remove()}
+    window[cb]=data=>{cleanup(); data&&data.ok?resolve(data):reject(new Error((data&&data.message)||'API lỗi'))};
+    s.src=API_URL+(API_URL.includes('?')?'&':'?')+qs.toString();
+    s.onerror=()=>{cleanup();reject(new Error('Không gọi được API. Kiểm tra link Web App.'))};
+    document.body.appendChild(s);
+  });
+}
+function postApi(action,payload={}){
+  return new Promise((resolve,reject)=>{
+    if(!apiReady()) return reject(new Error('Chưa cấu hình Apps Script Web App URL trong file HTML.'));
+    const requestId='REQ_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const iframe=document.createElement('iframe'); iframe.name='iframe_'+requestId; iframe.style.display='none';
+    const form=document.createElement('form'); form.method='POST'; form.action=API_URL; form.target=iframe.name; form.style.display='none';
+    [['action',action],['requestId',requestId],['payload',JSON.stringify(payload)]].forEach(([k,v])=>{const input=document.createElement('textarea'); input.name=k; input.value=v; form.appendChild(input)});
+    document.body.appendChild(iframe); document.body.appendChild(form); form.submit();
+    const start=Date.now();
+    const poll=async()=>{try{const res=await jsonp('getRequestResult',{requestId}); if(res.pending&&Date.now()-start<180000)return setTimeout(poll,1200); if(res.pending)throw new Error('Xử lý quá lâu hoặc request hết hạn.'); cleanup(); resolve(res)}catch(err){cleanup(); reject(err)}};
+    function cleanup(){form.remove(); setTimeout(()=>iframe.remove(),500)}
+    setTimeout(poll,1200);
+  });
+}
+function fileAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(new Error('Không đọc được file '+file.name));r.readAsDataURL(file)})}
+async function sha256Client(text){
+  const data = new TextEncoder().encode(String(text || ''));
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function init(){
+  try{ await testApi(); }catch(e){}
+  if(APP.token && APP.user){ applyLoginUi(); }
+  else { showTab('student', document.querySelector('[data-tab="student"]')); }
+}
+async function testApi(){
+  try{
+    const res=await jsonp('bootstrap');
+    APP.criteria=res.criteria||[]; APP.groupedCriteria=res.groupedCriteria||[]; APP.maxFileMb=Number(res.maxFileMb||8);
+    document.getElementById('appTitle').textContent=res.appTitle||'Hệ thống xét Sinh viên 5 tốt';
+    if(res.organizationLines) document.getElementById('orgText').innerHTML=res.organizationLines.map(esc).join('<br>');
+    renderCriteriaTable();
+  }catch(err){ console.warn('SV5T API chưa sẵn sàng:', err.message); }
+}
+function toggleRegister(){const b=document.getElementById('registerBox');b.style.display=b.style.display==='none'?'block':'none'}
+async function registerStudent(){
+  try{
+    showLoading(true);
+    const email = s_username.value.trim().toLowerCase();
+    const raw = s_password.value;
+    if(!email) throw new Error('Vui lòng nhập email sinh viên.');
+    if(!raw) throw new Error('Vui lòng nhập mật khẩu.');
+    const payload={
+      username: email,
+      email: email,
+      passwordRaw: raw,
+      passwordSha256: await sha256Client(raw)
+    };
+    const res=await postApi('register',payload);
+    studentAuthResult.innerHTML='<div class="alert ok">'+esc(res.message)+'</div>';
+  }catch(err){studentAuthResult.innerHTML='<div class="alert bad">'+esc(err.message)+'</div>'}
+  finally{showLoading(false)}
+}
+async function login(type){
+  try{
+    showLoading(true);
+    const u=(type==='student'?s_username.value:a_username.value).trim().toLowerCase();
+    const p=type==='student'?s_password.value:a_password.value;
+    if(!u) throw new Error(type==='student' ? 'Vui lòng nhập email sinh viên.' : 'Vui lòng nhập tài khoản quản lý.');
+    if(!p) throw new Error('Vui lòng nhập mật khẩu.');
+    const res=await jsonp('login',{username:u,passwordSha256:await sha256Client(p)});
+    APP.token=res.token; APP.user=res.user; localStorage.setItem('SV5T_TOKEN',APP.token); localStorage.setItem('SV5T_USER',JSON.stringify(APP.user));
+    applyLoginUi();
+  }catch(err){(type==='student'?studentAuthResult:adminAuthResult).innerHTML='<div class="alert bad">'+esc(err.message)+'</div>'}
+  finally{showLoading(false)}
+}
+function applyLoginUi(){
+  topUser.textContent = APP.user ? (APP.user.fullName || APP.user.username) : '';
+  if(APP.user.role==='STUDENT'){
+    studentAuthBox.style.display='none'; studentProfileBox.style.display='block'; studentInfoText.textContent=`${APP.user.fullName} - ${APP.user.studentId} - ${APP.user.className||''}`; showTab('student',document.querySelector('[data-tab="student"]')); loadMyApplication();
+  } else {
+    reviewerLoginBox.style.display='none'; reviewerDashboard.style.display='block'; adminInfoText.textContent=`${APP.user.fullName||APP.user.username} - ${APP.user.role}`; showTab('reviewer',document.querySelector('[data-tab="reviewer"]')); loadDashboard();
+  }
+}
+function logout(){localStorage.removeItem('SV5T_TOKEN');localStorage.removeItem('SV5T_USER');location.reload()}
+
+async function loadMyApplication(){
+  try{
+    showLoading(true);
+    const res=await jsonp('myApplication',{token:APP.token});
+    APP.myApp=res.application?res:null;
+    studentApplicationBox.style.display='block';
+    app_schoolYear.value=(res.application&&res.application.schoolYear)||'';
+    if(!app_schoolYear.value){ const bs=await jsonp('bootstrap'); app_schoolYear.value=bs.schoolYear||'2025-2026'; }
+    renderCriteriaTable(res);
+    if(res.application){ fillApplication(res); renderWorkflow(res.application.status); updateStudentActionButtons(res.application.status); studentStatus.innerHTML=renderStudentStatus(res); }
+    else { renderWorkflow('DRAFT'); updateStudentActionButtons('DRAFT'); studentStatus.innerHTML='<div class="alert warn">Bạn chưa có hồ sơ. Vui lòng nhập thông tin và nộp hồ sơ.</div>'; }
+  }catch(err){studentStatus.innerHTML='<div class="alert bad">'+esc(err.message)+'</div>'}
+  finally{showLoading(false)}
+}
+function updateStudentActionButtons(status){
+  const saveBtn = document.getElementById('btnSaveDraft');
+  const submitBtn = document.getElementById('btnSubmitApp');
+  if(!saveBtn || !submitBtn) return;
+  saveBtn.style.display = 'inline-flex';
+  submitBtn.style.display = 'inline-flex';
+  submitBtn.textContent = 'Nộp hồ sơ';
+  saveBtn.disabled = false;
+  submitBtn.disabled = false;
+
+  if(status === 'SUBMITTED'){
+    saveBtn.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Đang chờ duyệt';
+  }else if(status === 'NEED_SUPPLEMENT'){
+    saveBtn.style.display = 'none';
+    submitBtn.textContent = 'Gửi bổ sung minh chứng';
+  }else if(status === 'FINALIZED'){
+    saveBtn.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Đã chốt kết quả';
+  }
+}
+
+function renderStudentStatus(res){
+  const a = res.application || {};
+  if(a.status === 'SUBMITTED') return '<div class="alert info"><b>Hồ sơ đã nộp và đang chờ duyệt.</b> Bạn chưa cần thao tác thêm. Khi người chấm yêu cầu bổ sung, hệ thống sẽ mở lại đúng tiêu chí cần bổ sung.</div>';
+  if(a.status === 'NEED_SUPPLEMENT') return '<div class="alert warn"><b>Hồ sơ cần bổ sung minh chứng.</b> Vui lòng xem cột <b>Kết quả</b> và <b>Lý do</b>, sau đó chỉ bổ sung minh chứng cho các tiêu chí bị Không đạt hoặc Cần bổ sung.</div>';
+  if(a.status === 'FINALIZED') return '<div class="alert ok"><b>Hồ sơ đã chốt kết quả.</b> Kết quả cuối: '+badge(a.finalResult || '')+'</div>';
+  return '<div class="alert info">Trạng thái hồ sơ: '+badge(a.status || 'DRAFT')+'</div>';
+}
+
+function renderWorkflow(status){
+  const st = status || 'DRAFT';
+  const step = (key, label, desc) => {
+    let cls = '';
+    if((key==='DRAFT' && st==='DRAFT') || (key==='SUBMITTED' && st==='SUBMITTED') || (key==='NEED_SUPPLEMENT' && st==='NEED_SUPPLEMENT') || (key==='FINALIZED' && st==='FINALIZED')) cls = 'active';
+    if(key==='NEED_SUPPLEMENT' && st==='NEED_SUPPLEMENT') cls = 'warn';
+    if((key==='DRAFT' && st!=='DRAFT') || (key==='SUBMITTED' && (st==='NEED_SUPPLEMENT'||st==='FINALIZED')) || (key==='NEED_SUPPLEMENT' && st==='FINALIZED')) cls = 'done';
+    return `<div class="workflow-step ${cls}"><b>${label}</b><span>${desc}</span></div>`;
+  };
+  workflowBox.innerHTML = `<div class="workflow-box">
+    ${step('DRAFT','1. Lưu hồ sơ','Nhập thông tin và tải minh chứng.')}
+    ${step('SUBMITTED','2. Chờ duyệt','Sau khi nộp, hồ sơ tạm khóa chỉnh sửa.')}
+    ${step('NEED_SUPPLEMENT','3. Bổ sung','Chỉ bổ sung khi người chấm yêu cầu và có lý do.')}
+    ${step('FINALIZED','4. Chốt kết quả','Admin chốt kết quả cuối cùng.')}
+  </div>`;
+}
+
+function fillApplication(res){
+  const a=res.application;
+  app_fullName.value=a.fullName||APP.user.fullName||'';
+  app_gender.value=a.gender||APP.user.gender||'';
+  app_birthDate.value=(a.birthDate||APP.user.birthDate||'').slice(0,10);
+  app_ethnicity.value=a.ethnicity||APP.user.ethnicity||'';
+  app_yearOfStudy.value=a.yearOfStudy||APP.user.yearOfStudy||'';
+  app_className.value=a.className||APP.user.className||'';
+  app_unionPosition.value=a.unionPosition||APP.user.unionPosition||'';
+  app_phone.value=a.phone||APP.user.phone||'';
+  app_schoolYear.value=a.schoolYear||app_schoolYear.value||'';
+  app_studentNote.value=a.studentNote||'';
+}
+function renderCriteriaTable(existing){
+  if(!APP.groupedCriteria.length)return;
+  const ev={}, itemStatus={};
+  if(existing){
+    (existing.evidences||[]).forEach(e=>(ev[e.criterionId]??=[]).push(e));
+    (existing.groups||[]).forEach(g=>(g.items||[]).forEach(i=>itemStatus[i.criterionId]=i));
+  }
+
+  let html = '<div class="table-scroll"><table class="criteria-table"><thead><tr><th>STT</th><th>Tiêu chí lớn</th><th>Tiêu chí nhỏ / điều kiện</th><th>Minh chứng yêu cầu</th><th>Tài liệu minh chứng</th><th>Kết quả</th><th>Lý do</th></tr></thead><tbody>';
+
+  APP.groupedCriteria.forEach((g,gi)=>{
+    const items = g.items || [];
+    const requiredItems = items.filter(x=>x.itemType==='REQUIRED_AUTO' || x.itemType==='REQUIRED_EVIDENCE');
+    const optionItems = items.filter(x=>x.itemType==='OPTION_EVIDENCE');
+    const optionNeed = Math.max(1, ...optionItems.map(x=>Number(x.minOptionPass||1)));
+    const totalRows = (requiredItems.length ? 1 + requiredItems.length : 0) + (optionItems.length ? 1 + optionItems.length : 0) || 1;
+    let firstRow = true;
+
+    function openRow(){
+      let row = '<tr>';
+      if(firstRow){
+        row += `<td class="order-cell" rowspan="${totalRows}">${gi+1}</td>`;
+        row += `<td class="group-cell" rowspan="${totalRows}"><div class="group-label">${esc(displayGroupName(g.groupName))}</div></td>`;
+        firstRow = false;
+      }
+      return row;
+    }
+
+    if(requiredItems.length){
+      html += openRow() + `<td colspan="5"><div class="criteria-section-title">Các tiêu chí bắt buộc</div></td></tr>`;
+      requiredItems.forEach(item=>{
+        const files=ev[item.criterionId]||[], st=itemStatus[item.criterionId];
+        html += openRow();
+        if(item.itemType==='REQUIRED_AUTO'){
+          html += `<td><span class="criterion-title raw-criterion">${esc(item.label)}</span></td>`;
+          html += `<td><div class="auto-note">Hệ thống tự kiểm tra từ dữ liệu hồ sơ.</div></td><td><span class="muted">Không yêu cầu sinh viên tải minh chứng tại mục này.</span></td><td class="result-cell">${st?badge(st.status):'<span class="pill navy">Tự động</span>'}</td><td class="reason-cell">${st&&st.reason?esc(st.reason):'<span class="reason-empty">Không có</span>'}</td>`;
+        }else{
+          html += `<td><span class="criterion-title raw-criterion">${esc(item.label)}</span></td>`;
+          html += `<td><b>Yêu cầu:</b><br><span class="muted">${esc(item.sourceText||'Tải giấy chứng nhận/xác nhận/danh sách minh chứng phù hợp với tiêu chí.')}</span></td>`;
+          html += `<td>${renderEvidenceCell(item,files,st)}</td>`;
+          html += `<td class="result-cell">${st?badge(st.status):'<span class="pill warn">Chưa duyệt</span>'}</td><td class="reason-cell">${renderReasonCell(st)}</td>`;
+        }
+        html += '</tr>';
+      });
+    }
+
+    if(optionItems.length){
+      const label = optionNeed <= 1
+        ? 'Đạt thêm 01 trong các tiêu chí sau:'
+        : `Đạt tối thiểu ${optionNeed} trong các tiêu chí sau:`;
+      html += openRow() + `<td colspan="5"><div class="criteria-section-title">${label}</div></td></tr>`;
+      optionItems.forEach((item, idx)=>{
+        const files=ev[item.criterionId]||[], st=itemStatus[item.criterionId];
+        html += openRow();
+        html += `<td><span class="criterion-title raw-criterion">${idx+1}. ${esc(item.label)}</span></td>`;
+        html += `<td><b>Yêu cầu:</b><br><span class="muted">${esc(item.sourceText||'Tải giấy chứng nhận/xác nhận/danh sách minh chứng phù hợp với tiêu chí.')}</span></td>`;
+        html += `<td>${renderEvidenceCell(item,files,st)}</td>`;
+          html += `<td class="result-cell">${st?badge(st.status):'<span class="pill warn">Chưa duyệt</span>'}</td><td class="reason-cell">${renderReasonCell(st)}</td>`;
+        html += '</tr>';
+      });
+    }
+
+    if(firstRow){
+      html += `<tr><td class="order-cell">${gi+1}</td><td class="group-cell"><div class="group-label">${esc(displayGroupName(g.groupName))}</div></td><td colspan="5"><span class="muted">Chưa có tiêu chí.</span></td></tr>`;
+    }
+  });
+
+  html += '</tbody></table></div>';
+  criteriaContainer.innerHTML = html;
+}
+
+function renderReasonCell(st){
+  if(!st) return '<span class="reason-empty">Chưa có</span>';
+  const reason = st.reviewComment || st.reason || '';
+  const need = (st.status === 'FAIL' || st.status === 'NEED_MORE');
+  return `${reason ? esc(reason) : '<span class="reason-empty">Chưa có</span>'}${need ? '<div class="supplement-hint">Bạn có thể bổ sung minh chứng mới theo lý do này.</div>' : ''}`;
+}
+
+function canAddEvidenceForCriterion(st){
+  const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
+  if(!app) return true;
+  if(app.status === 'DRAFT') return true;
+  if(app.status === 'NEED_SUPPLEMENT') return !!st && (st.status === 'FAIL' || st.status === 'NEED_MORE');
+  return false;
+}
+function renderEvidenceCell(item,files,st){
+  const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
+  const canAdd = canAddEvidenceForCriterion(st);
+  const existing = files.length ? `<div class="muted"><b>Minh chứng đã tải:</b></div><ul class="existing-files">${files.sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0)).map((f,i)=>`<li><b>TL ${i+1}</b> - <span class="pill blue">MC ${f.evidenceOrder||i+1}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span></li>`).join('')}</ul>` : '<div class="muted">Chưa có tài liệu minh chứng.</div>';
+  let action = '';
+  if(canAdd){
+    const label = app && app.status === 'NEED_SUPPLEMENT' ? '+ Bổ sung minh chứng' : '+ Thêm minh chứng';
+    action = `<div class="evidence-tools" style="margin-top:10px"><span class="muted">Tài liệu mới</span><button class="btn blue small" onclick="addEvidenceRow('${esc(item.criterionId)}')">${label}</button></div><div id="evRows_${esc(item.criterionId)}"></div>`;
+  }else{
+    let msg = 'Hồ sơ đang khóa tải minh chứng.';
+    if(app && app.status === 'SUBMITTED') msg = 'Đã nộp hồ sơ, chờ người chấm duyệt.';
+    if(app && app.status === 'FINALIZED') msg = 'Hồ sơ đã chốt kết quả, không thể bổ sung.';
+    if(app && app.status === 'NEED_SUPPLEMENT') msg = 'Chỉ được bổ sung cho tiêu chí bị Không đạt hoặc Cần bổ sung.';
+    action = `<div class="locked-evidence" style="margin-top:10px">${msg}</div><div id="evRows_${esc(item.criterionId)}"></div>`;
+  }
+  return `<div class="evidence-panel">${existing}${action}</div>`;
+}
+
+function addEvidenceRow(criterionId){
+  const box=document.getElementById('evRows_'+criterionId);
+  const index=box.querySelectorAll('.evidence-row').length+1;
+  const existingCount=(APP.myApp?.evidences||[]).filter(e=>e.criterionId===criterionId).length;
+  const displayNo=existingCount+index;
+  const row=document.createElement('div');
+  row.className='evidence-row';
+  row.dataset.criterion=criterionId;
+  row.dataset.order=displayNo;
+  row.innerHTML=`<div class="evidence-row-head"><span class="mc-badge">Minh chứng ${displayNo}</span><button type="button" class="btn secondary small" onclick="this.closest('.evidence-row').remove()">Xóa</button></div>
+    <label>Tên minh chứng <span class="req">*</span></label>
+    <input class="ev-title" placeholder="VD: Giấy chứng nhận hoạt động tình nguyện hè 2025" oninput="enableEvidenceFile(this)">
+    <label style="margin-top:8px">Tài liệu tương ứng</label>
+    <input class="ev-file file-disabled" type="file" disabled onchange="previewEvidenceFile(this)">
+    <div class="muted ev-preview">Nhập tên minh chứng trước, sau đó mới chọn file tài liệu.</div>`;
+  box.appendChild(row);
+  const cb=document.getElementById('claim_'+criterionId); if(cb) cb.checked=true;
+}
+function enableEvidenceFile(input){
+  const row=input.closest('.evidence-row');
+  const file=row.querySelector('.ev-file');
+  const ok=input.value.trim().length>0;
+  file.disabled=!ok;
+  file.classList.toggle('file-disabled',!ok);
+  if(!ok) file.value='';
+  row.querySelector('.ev-preview').textContent=ok?'Có thể chọn file tài liệu cho tên minh chứng này.':'Nhập tên minh chứng trước, sau đó mới chọn file tài liệu.';
+}
+function previewEvidenceFile(input){
+  const row=input.closest('.evidence-row');
+  const f=input.files&&input.files[0];
+  row.querySelector('.ev-preview').innerHTML=f?`Đã chọn: <b>${esc(f.name)}</b> - ${moneySize(f.size)}`:'Chưa chọn file.';
+}
+async function collectFiles(){
+  const rows=Array.from(document.querySelectorAll('.evidence-row'));
+  const out=[];
+  for(const row of rows){
+    const criterionId=row.dataset.criterion;
+    const title=row.querySelector('.ev-title').value.trim();
+    const fileInput=row.querySelector('.ev-file');
+    const file=fileInput.files&&fileInput.files[0];
+    if(!title && !file) continue;
+    if(!title) throw new Error('Chưa nhập tên minh chứng.');
+    if(!file) throw new Error('Minh chứng "'+title+'" chưa chọn file tài liệu.');
+    if(file.size>APP.maxFileMb*1024*1024) throw new Error('File '+file.name+' vượt quá '+APP.maxFileMb+'MB.');
+    out.push({
+      criterionId:criterionId,
+      evidenceOrder:Number(row.dataset.order||out.length+1),
+      criterionEvidenceNo:criterionId+'-'+(row.dataset.order||out.length+1),
+      evidenceTitle:title,
+      fileName:file.name,
+      mimeType:file.type||'application/octet-stream',
+      size:file.size,
+      base64:await fileAsDataURL(file),
+      note:title
+    });
+  }
+  return out;
+}
+function collectClaims(){
+  const existing = APP.myApp && APP.myApp.evidences ? APP.myApp.evidences : [];
+  return APP.criteria.filter(i=>i.itemType==='OPTION_EVIDENCE' || i.itemType==='REQUIRED_EVIDENCE').map(item=>{
+    const hasNew = document.querySelectorAll(`.evidence-row[data-criterion="${CSS.escape(item.criterionId)}"]`).length > 0;
+    const hasOld = existing.some(e=>e.criterionId===item.criterionId);
+    return {criterionId:item.criterionId,selected:hasNew||hasOld,studentNote:''};
+  });
+}
+async function saveApplication(submitNow){
+  try{
+    showLoading(true);
+    const files = await collectFiles();
+    const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
+
+    if(app && app.status === 'FINALIZED') throw new Error('Hồ sơ đã chốt kết quả, không thể cập nhật.');
+    if(app && app.status === 'SUBMITTED') throw new Error('Hồ sơ đã nộp và đang chờ duyệt. Chỉ được bổ sung khi người chấm yêu cầu.');
+
+    if(app && app.status === 'NEED_SUPPLEMENT'){
+      if(!files.length) throw new Error('Vui lòng tải ít nhất 01 minh chứng bổ sung.');
+      const payload={token:APP.token,claims:collectClaims(),files};
+      const res=await postApi('studentSupplement',payload);
+      applicationResult.innerHTML='<div class="alert ok">'+esc(res.message)+'</div>';
+      await loadMyApplication();
+      return;
+    }
+
+    const payload={token:APP.token,application:{fullName:app_fullName.value,gender:app_gender.value,birthDate:app_birthDate.value,ethnicity:app_ethnicity.value,yearOfStudy:app_yearOfStudy.value,className:app_className.value,unionPosition:app_unionPosition.value,phone:app_phone.value,schoolYear:app_schoolYear.value,studentNote:app_studentNote.value,faculty:'Khoa Công nghệ thông tin'},claims:collectClaims(),files};
+    const res=await postApi(submitNow?'studentSubmitApplication':'studentSaveApplication',payload);
+    applicationResult.innerHTML='<div class="alert ok">'+esc(res.message)+'</div>';
+    await loadMyApplication();
+  }catch(err){applicationResult.innerHTML='<div class="alert bad">'+esc(err.message)+'</div>'}
+  finally{showLoading(false)}
+}
+
+
+function showAdminSection(section, btn){
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const map = {
+    applications:['reviewerDashboard'],
+    users:['userManageBox'],
+    criteria:['criteriaManageBox'],
+    data:['dataToolsBox']
+  };
+  ['applicationList','userManageBox','criteriaManageBox','dataToolsBox'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  if(section==='applications'){
+    applicationList.style.display='block';
+  }
+  if(section==='users'){
+    userManageBox.style.display='block';
+    if(APP.user.role==='ADMIN') loadUsers();
+  }
+  if(section==='criteria'){
+    criteriaManageBox.style.display='block';
+    if(APP.user.role==='ADMIN') loadCriteriaAdmin();
+  }
+  if(section==='data'){
+    dataToolsBox.style.display='block';
+    renderDataTools();
+  }
+}
+
+async function changeMyPassword(){
+  try{
+    const oldPass = prompt('Nhập mật khẩu cũ');
+    if(oldPass === null) return;
+    const newPass = prompt('Nhập mật khẩu mới, tối thiểu 6 ký tự');
+    if(newPass === null) return;
+    if(newPass.length < 6){ alert('Mật khẩu mới phải có ít nhất 6 ký tự.'); return; }
+    showLoading(true);
+    await postApi('changeMyPassword',{
+      token:APP.token,
+      oldPasswordRaw:oldPass,
+      oldPasswordSha256:await sha256Client(oldPass),
+      newPasswordRaw:newPass,
+      newPasswordSha256:await sha256Client(newPass)
+    });
+    alert('Đã đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
+    logout();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
+}
+
+function renderDataTools(){
+  if(APP.user.role !== 'ADMIN'){
+    dataToolsBox.innerHTML = '<div class="alert bad">Chỉ admin mới được sử dụng chức năng dữ liệu.</div>';
+    return;
+  }
+  dataToolsBox.innerHTML = `<div class="box-title"><div><h2>Quản trị dữ liệu</h2><div class="desc">Khu vực thao tác nguy hiểm, chỉ dùng khi cần làm sạch hoặc xóa hồ sơ.</div></div></div>
+    <div class="danger-zone">
+      <h3>Xóa toàn bộ dữ liệu hồ sơ</h3>
+      <p class="muted">Chức năng này xóa toàn bộ hồ sơ, minh chứng, kết quả duyệt trong Google Sheet và đưa thư mục minh chứng hồ sơ vào thùng rác. Tài khoản và tiêu chí vẫn được giữ lại.</p>
+      <button class="btn bad" onclick="clearApplicationData()">Xóa toàn bộ dữ liệu hồ sơ</button>
+    </div>`;
+}
+
+async function clearApplicationData(){
+  const c = prompt('Nhập chính xác XOA DU LIEU để xác nhận xóa toàn bộ hồ sơ');
+  if(c !== 'XOA DU LIEU') return;
+  try{
+    showLoading(true);
+    const res = await postApi('clearApplicationData',{token:APP.token,confirmText:c});
+    alert(res.message);
+    await loadDashboard();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
+}
+
+async function deleteApplication(appId){
+  if(!confirm('Xóa hồ sơ '+appId+' và toàn bộ minh chứng liên quan?')) return;
+  try{
+    showLoading(true);
+    const res = await postApi('deleteApplication',{token:APP.token,applicationId:appId});
+    alert(res.message);
+    detailBox.style.display='none';
+    await loadDashboard();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
+}
+
+async function setUserActive(username, active){
+  if(!confirm((active?'Mở':'Khóa')+' tài khoản '+username+'?')) return;
+  try{
+    showLoading(true);
+    await postApi('setUserActive',{token:APP.token,username,active});
+    await loadUsers();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
+}
+
+async function resetUserDefault(username){
+  if(!confirm('Chuyển mật khẩu của '+username+' về mặc định 123456?')) return;
+  try{
+    showLoading(true);
+    await postApi('resetUserPassword',{token:APP.token,username,newPassword:'123456'});
+    alert('Đã chuyển mật khẩu về mặc định 123456.');
+    await loadUsers();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
+}
+
+async function adminChangeUserPassword(username){
+  const pass = prompt('Nhập mật khẩu mới cho '+username);
+  if(pass === null) return;
+  if(pass.length < 6){ alert('Mật khẩu mới phải có ít nhất 6 ký tự.'); return; }
+  try{
+    showLoading(true);
+    await postApi('resetUserPassword',{token:APP.token,username,newPassword:pass});
+    alert('Đã đổi mật khẩu tài khoản '+username+'.');
+    await loadUsers();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
+}
+
+
+async function loadDashboard(){await Promise.all([loadStats(),loadApplications()]); if(APP.user.role==='ADMIN'){loadUsers();loadCriteriaAdmin();renderDataTools()} else { if(adminTabs) adminTabs.style.display='none'; }}
+async function loadStats(){try{const r=await jsonp('stats',{token:APP.token}); const s=r.stats; statsBox.innerHTML=[['total','Tổng'],['submitted','Đã nộp'],['needSupplement','Cần bổ sung'],['finalized','Đã chốt'],['pass','Đạt'],['fail','Không đạt']].map(([k,l])=>`<div class="stat"><div class="num">${s[k]}</div><div class="label">${l}</div></div>`).join('')}catch(e){statsBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}}
+async function loadApplications(){
+  try{const r=await jsonp('listApplications',{token:APP.token,q:filterQ.value,status:filterStatus.value}); const rows=r.applications||[]; applicationList.innerHTML=rows.length?`<table><thead><tr><th>Mã hồ sơ</th><th>Sinh viên</th><th>Lớp/Khoa</th><th>Trạng thái</th><th>Nhóm đạt</th><th></th></tr></thead><tbody>${rows.map(a=>`<tr><td><b>${esc(a.applicationId)}</b><br><span class="muted">${fmtDate(a.updatedAt)}</span></td><td>${esc(a.fullName)}<br><span class="muted">${esc(a.studentId)}</span></td><td>${esc(a.className)}<br><span class="muted">${esc(a.faculty)}</span></td><td>${badge(a.status)} ${a.finalResult?'<br>'+badge(a.finalResult):''}</td><td>${a.passGroups||0}/6</td><td><div class="account-actions"><button class="btn primary small" onclick="openDetail('${esc(a.applicationId)}')">Mở chấm</button>${APP.user.role==='ADMIN'?`<button class="btn bad small" onclick="deleteApplication('${esc(a.applicationId)}')">Xóa</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="alert warn">Không có hồ sơ.</div>'}catch(e){applicationList.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}
+}
+async function openDetail(id){
+  try{showLoading(true); const r=await jsonp('applicationDetail',{token:APP.token,applicationId:id}); detailBox.style.display='block'; detailBox.innerHTML=renderDetailTable(r); detailBox.scrollIntoView({behavior:'smooth'});}catch(e){alert(e.message)}finally{showLoading(false)}
+}
+function renderDetailTable(r){
+  const a=r.application, ev={}; (r.evidences||[]).forEach(e=>(ev[e.criterionId]??=[]).push(e));
+  let html=`<div class="box-title"><div><h2>Chấm hồ sơ ${esc(a.applicationId)}</h2><div class="desc">${esc(a.fullName)} - ${esc(a.studentId||'')} - ${esc(a.className)}</div></div><button class="btn secondary small" onclick="detailBox.style.display='none'">Đóng</button></div><div class="alert info">Tóm tắt: ${badge(r.summary.overallPass?'ĐẠT':'KHÔNG ĐẠT')} Nhóm đạt <b>${r.summary.passGroups}/${r.summary.totalRequiredGroups}</b></div>`;
+  html += '<div class="table-scroll"><table class="criteria-table"><thead><tr><th>STT</th><th>Tiêu chí lớn</th><th>Tiêu chí nhỏ</th><th>Tài liệu minh chứng</th><th>Kết quả</th><th>Lý do</th><th>Chấm duyệt</th></tr></thead><tbody>';
+
+  (r.groups||[]).forEach((g,gi)=>{
+    const items=g.items||[];
+    const requiredItems=items.filter(x=>x.itemType==='REQUIRED_AUTO'||x.itemType==='REQUIRED_EVIDENCE');
+    const optionItems=items.filter(x=>x.itemType==='OPTION_EVIDENCE');
+    const optionNeed=Math.max(1,...optionItems.map(x=>Number(x.optionNeeded||x.minOptionPass||1)));
+    const totalRows=(requiredItems.length?1+requiredItems.length:0)+(optionItems.length?1+optionItems.length:0)||1;
+    let firstRow=true;
+
+    function openRow(){
+      let row='<tr>';
+      if(firstRow){
+        row += `<td class="order-cell" rowspan="${totalRows}">${gi+1}</td><td class="group-cell" rowspan="${totalRows}"><div class="group-label">${esc(displayGroupName(g.groupName))}</div></td>`;
+        firstRow=false;
+      }
+      return row;
+    }
+    function itemRow(item, idxPrefix){
+      const files=(ev[item.criterionId]||[]).sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0));
+      let row=openRow();
+      row += `<td><div class="criterion-title">${idxPrefix ? idxPrefix+'. ' : ''}${esc(item.label)}</div><div class="criterion-help">${esc(item.reason||'')}</div></td>`;
+      row += `<td>${files.length?`<ol>${files.map((f,i)=>`<li><b>TL ${i+1}</b> - <span class="pill blue">MC ${f.evidenceOrder||i+1}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span></li>`).join('')}</ol>`:'<div class="alert warn">Chưa có minh chứng.</div>'}</td>`;
+      row += `<td class="result-cell">${badge(item.status)}</td><td class="reason-cell">${renderReasonCell(item)}</td>`;
+      if(item.itemType==='OPTION_EVIDENCE' || item.itemType==='REQUIRED_EVIDENCE'){
+        row += `<td><label>Nhận xét</label><input id="cmt_${esc(item.criterionId)}" value="${esc(item.reviewComment||'')}"><div class="toolbar" style="margin-top:8px"><button class="btn ok small" onclick="review('${esc(a.applicationId)}','${esc(item.criterionId)}','PASS')">Đạt</button><button class="btn bad small" onclick="review('${esc(a.applicationId)}','${esc(item.criterionId)}','FAIL')">Không đạt</button><button class="btn warn small" onclick="review('${esc(a.applicationId)}','${esc(item.criterionId)}','NEED_MORE')">Yêu cầu bổ sung</button></div></td>`;
+      }else{
+        row += '<td><span class="muted">Tiêu chí tự động</span></td>';
+      }
+      return row+'</tr>';
+    }
+
+    if(requiredItems.length){
+      html += openRow()+`<td colspan="5"><div class="criteria-section-title">Các tiêu chí bắt buộc</div></td></tr>`;
+      requiredItems.forEach(item=>{ html += itemRow(item,''); });
+    }
+    if(optionItems.length){
+      const label=optionNeed<=1?'Đạt thêm 01 trong các tiêu chí sau:':`Đạt tối thiểu ${optionNeed} trong các tiêu chí sau:`;
+      html += openRow()+`<td colspan="5"><div class="criteria-section-title">${label}</div></td></tr>`;
+      optionItems.forEach((item,i)=>{ html += itemRow(item,String(i+1)); });
+    }
+  });
+
+  html += `</tbody></table></div><div class="box" style="margin-top:14px"><h3>Chốt kết quả</h3><label>Ghi chú</label><input id="finalNote_${esc(a.applicationId)}"><div class="toolbar" style="margin-top:10px"><button class="btn primary" onclick="finalize('${esc(a.applicationId)}','AUTO')">Chốt tự động</button><button class="btn ok" onclick="finalize('${esc(a.applicationId)}','PASS')">Chốt ĐẠT</button><button class="btn bad" onclick="finalize('${esc(a.applicationId)}','FAIL')">Chốt KHÔNG ĐẠT</button></div></div>`;
+  return html;
+}
+async function review(appId,critId,status){
+  try{
+    const comment = document.getElementById('cmt_'+critId)?.value.trim() || '';
+    if((status==='FAIL' || status==='NEED_MORE') && !comment){
+      alert('Vui lòng ghi rõ lý do khi chấm Không đạt hoặc Yêu cầu bổ sung.');
+      return;
+    }
+    showLoading(true);
+    await postApi('reviewCriterion',{token:APP.token,applicationId:appId,criterionId:critId,status,comment});
+    await openDetail(appId);
+    await loadDashboard();
+  }catch(e){alert(e.message)}finally{showLoading(false)}
+}
+async function finalize(appId,mode){try{showLoading(true); await postApi('finalizeApplication',{token:APP.token,applicationId:appId,mode,note:document.getElementById('finalNote_'+appId)?.value||''}); await openDetail(appId); await loadDashboard()}catch(e){alert(e.message)}finally{showLoading(false)}}
+async function exportResults(){try{const r=await jsonp('exportResults',{token:APP.token}); window.open(r.url,'_blank')}catch(e){alert(e.message)}}
+
+async function loadUsers(){if(APP.user.role!=='ADMIN')return; try{const r=await jsonp('listUsers',{token:APP.token}); userManageBox.style.display='block'; userManageBox.innerHTML=`<div class="box-title"><div><h2>Quản lý tài khoản</h2><div class="desc">Admin có thể tạo tài khoản, khóa/mở tài khoản, đổi mật khẩu hoặc chuyển về mật khẩu mặc định 123456.</div></div></div>
+<div class="field-grid">
+  <div class="field col-3"><label>Email / Username</label><input id="u_username" placeholder="reviewer@dntu.edu.vn"></div>
+  <div class="field col-3"><label>Mật khẩu</label><input id="u_password" placeholder="Để trống sẽ dùng 123456"></div>
+  <div class="field col-3"><label>Họ tên</label><input id="u_fullName"></div>
+  <div class="field col-3"><label>Email</label><input id="u_email"></div>
+  <div class="field col-3"><label>Vai trò</label><select id="u_role"><option>REVIEWER</option><option>ADMIN</option><option>STUDENT</option></select></div>
+  <div class="field col-3"><label>Khoa</label><input id="u_faculty" value="Khoa Công nghệ thông tin"></div>
+  <div class="field col-3"><label>Trạng thái</label><select id="u_active"><option value="true">Hoạt động</option><option value="false">Khóa</option></select></div>
+</div>
+<button class="btn primary" style="margin:10px 0" onclick="saveUser()">Tạo / cập nhật tài khoản</button>
+<div class="table-scroll"><table><thead><tr><th>Email / Username</th><th>Họ tên</th><th>Vai trò</th><th>Khoa</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${(r.users||[]).map(u=>`<tr><td><b>${esc(u.username)}</b><div class="mini-note">${esc(u.email||'')}</div></td><td>${esc(u.fullName||'')}</td><td>${esc(u.role)}</td><td>${esc(u.faculty||'')}</td><td>${u.active?'<span class="pill ok">Hoạt động</span>':'<span class="pill bad">Đã khóa</span>'}</td><td><div class="account-actions"><button class="btn ${u.active?'warn':'ok'} small" onclick="setUserActive('${esc(u.username)}',${!u.active})">${u.active?'Khóa':'Mở'}</button><button class="btn secondary small" onclick="resetUserDefault('${esc(u.username)}')">MK mặc định</button><button class="btn primary small" onclick="adminChangeUserPassword('${esc(u.username)}')">Đổi MK</button></div></td></tr>`).join('')}</tbody></table></div>`}catch(e){userManageBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}}
+async function saveUser(){try{await postApi('upsertUser',{token:APP.token,user:{username:u_username.value,passwordRaw:u_password.value,fullName:u_fullName.value,email:u_email.value,role:u_role.value,faculty:u_faculty.value,active:u_active.value==='true'}}); await loadUsers()}catch(e){alert(e.message)}}
+async function loadCriteriaAdmin(){if(APP.user.role!=='ADMIN')return; try{const r=await jsonp('listCriteria',{token:APP.token}); criteriaManageBox.style.display='block'; criteriaManageBox.innerHTML=`<div class="box-title"><div><h2>Quản lý tiêu chí</h2><div class="desc">Admin có thể chỉnh sửa tiêu chí trực tiếp trong Google Sheet CRITERIA hoặc dùng phần này để thêm nhanh.</div></div></div><div class="field-grid"><div class="field col-3"><label>Group ID</label><input id="c_groupId" placeholder="VD: HOC_TAP"></div><div class="field col-3"><label>Tên nhóm</label><input id="c_groupName"></div><div class="field col-6"><label>Nội dung tiêu chí</label><input id="c_label"></div><div class="field col-3"><label>Loại</label><select id="c_itemType"><option value="REQUIRED_EVIDENCE">Tiêu chí bắt buộc có minh chứng</option><option value="OPTION_EVIDENCE">Tiêu chí lựa chọn chỉ cần đạt 01</option><option value="REQUIRED_AUTO">Tự động</option></select></div><div class="field col-3"><label>Rule tự động</label><input id="c_rule" placeholder="GPA_3, NO_F..."></div><div class="field col-3"><label>Thứ tự nhóm</label><input id="c_groupOrder" type="number" value="1"></div><div class="field col-3"><label>Thứ tự tiêu chí</label><input id="c_criterionOrder" type="number" value="1"></div></div><button class="btn primary" style="margin:10px 0" onclick="saveCriterion()">Thêm tiêu chí</button><table><thead><tr><th>Nhóm</th><th>Nội dung</th><th>Loại</th><th>Minh chứng</th><th>Trạng thái</th></tr></thead><tbody>${(r.criteria||[]).map(c=>`<tr><td>${esc(c.groupName)}</td><td>${esc(c.label)}</td><td>${esc(c.itemType)}</td><td>${c.evidenceRequired?'Bắt buộc':''}</td><td>${c.active?badge('PASS'):badge('FAIL')}</td></tr>`).join('')}</tbody></table>`}catch(e){}}
+async function saveCriterion(){try{await postApi('upsertCriterion',{token:APP.token,criterion:{groupId:c_groupId.value,groupName:c_groupName.value,label:c_label.value,itemType:c_itemType.value,rule:c_rule.value,groupOrder:c_groupOrder.value,criterionOrder:c_criterionOrder.value,minOptionPass:1,active:true}}); await loadCriteriaAdmin(); await testApi()}catch(e){alert(e.message)}}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
