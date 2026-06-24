@@ -416,6 +416,7 @@
     <div class="topbar"><span class="hamb">≡</span><span class="topbar-title">Tiêu chuẩn Sinh viên 5 tốt</span><span class="topbar-spacer"></span><span class="topbar-user" id="topUser"></span></div>
     <div class="masthead"><div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>KHOA CÔNG NGHỆ THÔNG TIN</div><div class="underline"></div></div>
     <div class="hero"><h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1><p>Trang đăng ký, nộp minh chứng, chấm duyệt và quản trị tiêu chí xét Sinh viên 5 tốt.</p></div>
+    <div id="apiStatusBox" style="display:none;margin:0 24px 12px"></div>
     <div class="tabs">
       <button class="tab active" data-tab="student" onclick="showTab('student',this)">Sinh viên</button>
       <button class="tab" data-tab="reviewer" onclick="showTab('reviewer',this)">Quản lý</button>
@@ -520,9 +521,13 @@
 
 <script>
 // Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwbXCFlkvPAWLb6D2LqflqxxmWdbIAVCaAfgG2TW3uPy-7HovD8a0EQjDSRUbX3JD_9mw/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbw9wXXpatV2rCNmCsG0-rUDazA9c3uYf0NliCX3kDy8NDAbgPrVNiEwcgtavoKI0ipJ/exec';
 
 let API_URL = localStorage.getItem('SV5T_API_URL') || DEFAULT_API_URL;
+if (API_URL && API_URL.indexOf('AKfycbwbXCFlkv') >= 0) {
+  API_URL = DEFAULT_API_URL;
+  localStorage.removeItem('SV5T_API_URL');
+}
 const APP = {
   token: localStorage.getItem('SV5T_TOKEN') || '',
   user: JSON.parse(localStorage.getItem('SV5T_USER') || 'null'),
@@ -590,7 +595,15 @@ async function testApi(){
     document.getElementById('appTitle').textContent=res.appTitle||'Hệ thống xét Sinh viên 5 tốt';
     if(res.organizationLines) document.getElementById('orgText').innerHTML=res.organizationLines.map(esc).join('<br>');
     renderCriteriaTable();
-  }catch(err){ console.warn('SV5T API chưa sẵn sàng:', err.message); }
+    const box=document.getElementById('apiStatusBox'); if(box){box.style.display='none';box.innerHTML='';}
+  }catch(err){
+    console.warn('SV5T API chưa sẵn sàng:', err.message);
+    const box=document.getElementById('apiStatusBox');
+    if(box){
+      box.style.display='block';
+      box.innerHTML='<div class="alert bad"><b>Backend chưa kết nối được.</b> '+esc(err.message)+'<br><span class="muted">Kiểm tra Google Apps Script đã deploy Web App (Bất kỳ ai) và URL /exec đúng. Test: <a href="'+esc(API_URL+'?action=ping')+'" target="_blank">mở link ping</a></span></div>';
+    }
+  }
 }
 function toggleRegister(){const b=document.getElementById('registerBox');b.style.display=b.style.display==='none'?'block':'none'}
 async function registerStudent(){
