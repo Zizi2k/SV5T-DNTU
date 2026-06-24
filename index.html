@@ -414,7 +414,7 @@
 <div class="app">
   <div class="shell">
     <div class="topbar"><span class="hamb">≡</span><span class="topbar-title">Tiêu chuẩn Sinh viên 5 tốt</span><span class="topbar-spacer"></span><span class="topbar-user" id="topUser"></span></div>
-    <div class="masthead"><div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>KHOA CÔNG NGHỆ THÔNG TIN</div><div class="underline"></div></div>
+    <div class="masthead"><div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>CLB SV5T</div><div class="underline"></div></div>
     <div class="hero"><h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1><p>Trang đăng ký, nộp minh chứng, chấm duyệt và quản trị tiêu chí xét Sinh viên 5 tốt.</p></div>
     <div id="apiStatusBox" style="display:none;margin:0 24px 12px"></div>
     <div class="tabs">
@@ -515,7 +515,7 @@
         </div>
       </section>
     </div>
-    <div class="footer">Hệ thống xét Sinh viên 5 tốt - Khoa Công nghệ thông tin</div>
+    <div class="footer">Hệ thống xét Sinh viên 5 tốt - CLB SV5T</div>
   </div>
 </div>
 
@@ -917,7 +917,7 @@ async function saveApplication(submitNow){
       return;
     }
 
-    const payload={token:APP.token,application:{fullName:app_fullName.value,gender:app_gender.value,birthDate:app_birthDate.value,ethnicity:app_ethnicity.value,yearOfStudy:app_yearOfStudy.value,className:app_className.value,unionPosition:app_unionPosition.value,phone:app_phone.value,schoolYear:app_schoolYear.value,studentNote:app_studentNote.value,faculty:'Khoa Công nghệ thông tin'},claims:collectClaims(),files};
+    const payload={token:APP.token,application:{fullName:app_fullName.value,gender:app_gender.value,birthDate:app_birthDate.value,ethnicity:app_ethnicity.value,yearOfStudy:app_yearOfStudy.value,className:app_className.value,unionPosition:app_unionPosition.value,phone:app_phone.value,schoolYear:app_schoolYear.value,studentNote:app_studentNote.value,faculty:'CLB SV5T'},claims:collectClaims(),files};
     const res=await postApi(submitNow?'studentSubmitApplication':'studentSaveApplication',payload);
     applicationResult.innerHTML='<div class="alert ok">'+esc(res.message)+'</div>';
     await loadMyApplication();
@@ -1129,7 +1129,7 @@ async function loadUsers(){if(APP.user.role!=='ADMIN')return; try{const r=await 
   <div class="field col-3"><label>Họ tên</label><input id="u_fullName"></div>
   <div class="field col-3"><label>Email</label><input id="u_email"></div>
   <div class="field col-3"><label>Vai trò</label><select id="u_role"><option>REVIEWER</option><option>ADMIN</option><option>STUDENT</option></select></div>
-  <div class="field col-3"><label>Khoa</label><input id="u_faculty" value="Khoa Công nghệ thông tin"></div>
+  <div class="field col-3"><label>Khoa</label><input id="u_faculty" value="CLB SV5T"></div>
   <div class="field col-3"><label>Trạng thái</label><select id="u_active"><option value="true">Hoạt động</option><option value="false">Khóa</option></select></div>
 </div>
 <button class="btn primary" style="margin:10px 0" onclick="saveUser()">Tạo / cập nhật tài khoản</button>
