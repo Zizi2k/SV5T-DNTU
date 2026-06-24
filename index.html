@@ -540,7 +540,7 @@
 <script>
 // Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-ui-pro';
+const APP_BUILD = '20260625-no-khoa';
 
 let API_URL = DEFAULT_API_URL;
 try {
@@ -563,6 +563,22 @@ if(!window.CSS) window.CSS = {};
 if(!CSS.escape) CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 function displayGroupName(name){
   return String(name || '').replace(/^\s*\d+\s*[\.\)]\s*/, '').trim();
+}
+function cleanDisplayText(s){
+  return String(s||'')
+    .replace(/\s*[-–—]\s*Khoa Công nghệ thông tin/gi,'')
+    .replace(/KHOA CÔNG NGHỆ THÔNG TIN/gi,'CLB SV5T')
+    .replace(/Khoa Công nghệ thông tin/gi,'CLB SV5T')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+function applyBrandingFromApi(res){
+  const title=cleanDisplayText(res.appTitle)||'Hệ thống xét Sinh viên 5 tốt';
+  document.getElementById('appTitle').textContent=title;
+  if(res.organizationLines&&res.organizationLines.length){
+    const lines=res.organizationLines.map(cleanDisplayText).filter(Boolean);
+    if(lines.length) document.getElementById('orgText').innerHTML=lines.map(esc).join('<br>');
+  }
 }
 
 function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[m]))}
@@ -617,8 +633,7 @@ async function testApi(){
   try{
     const res=await jsonp('bootstrap');
     APP.criteria=res.criteria||[]; APP.groupedCriteria=res.groupedCriteria||[]; APP.maxFileMb=Number(res.maxFileMb||8);
-    document.getElementById('appTitle').textContent=res.appTitle||'Hệ thống xét Sinh viên 5 tốt';
-    if(res.organizationLines) document.getElementById('orgText').innerHTML=res.organizationLines.map(esc).join('<br>');
+    applyBrandingFromApi(res);
     renderCriteriaTable();
     const box=document.getElementById('apiStatusBox'); if(box){box.style.display='none';box.innerHTML='';}
   }catch(err){

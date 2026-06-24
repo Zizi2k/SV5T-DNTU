@@ -20,7 +20,7 @@
  */
 
 const SV5T = {
-  APP_NAME: 'Hệ thống xét Sinh viên 5 tốt - CLB SV5T',
+  APP_NAME: 'Hệ thống xét Sinh viên 5 tốt',
   PROP: {
     SS_ID: 'SV5T_SPREADSHEET_ID',
     ROOT_ID: 'SV5T_ROOT_FOLDER_ID',
@@ -341,7 +341,7 @@ function seedConfig_() {
   const sh = getSheet_(SV5T.SHEETS.CONFIG);
   if (sh.getLastRow() > 1) return;
   appendObjects_(SV5T.SHEETS.CONFIG, [
-    { key: 'APP_TITLE', value: 'Hệ thống xét Sinh viên 5 tốt - CLB SV5T', note: 'Tiêu đề hiển thị', updatedAt: new Date() },
+    { key: 'APP_TITLE', value: 'Hệ thống xét Sinh viên 5 tốt', note: 'Tiêu đề hiển thị', updatedAt: new Date() },
     { key: 'SCHOOL_YEAR', value: '2025-2026', note: 'Năm học mặc định', updatedAt: new Date() },
     { key: 'ALLOW_REGISTER', value: 'TRUE', note: 'TRUE: cho phép sinh viên đăng ký tài khoản', updatedAt: new Date() },
     { key: 'ALLOW_SUBMIT', value: 'TRUE', note: 'TRUE: cho phép nộp/bổ sung hồ sơ', updatedAt: new Date() },
@@ -1800,10 +1800,10 @@ function clearSheetData_(sheetName) {
  ***********************/
 function capNhatTenDonVi_CLB_SV5T() {
   ensureSetup_();
-  setConfig_('APP_TITLE', 'Hệ thống xét Sinh viên 5 tốt - CLB SV5T', 'Tiêu đề hiển thị');
+  setConfig_('APP_TITLE', 'Hệ thống xét Sinh viên 5 tốt', 'Tiêu đề hiển thị');
   setConfig_('ORGANIZATION_LINE_3', 'CLB SV5T', 'Dòng đơn vị 3');
-  Logger.log('Đã cập nhật tên đơn vị thành CLB SV5T.');
-  return { ok: true, message: 'Đã cập nhật tên đơn vị thành CLB SV5T.' };
+  Logger.log('Đã xóa tên Khoa CNTT cũ, cập nhật CLB SV5T.');
+  return { ok: true, message: 'Đã cập nhật: xóa "Khoa Công nghệ thông tin", dùng CLB SV5T.' };
 }
 
 function xemLinkHeThongSV5T() {
