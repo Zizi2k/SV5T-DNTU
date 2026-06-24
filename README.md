@@ -44,12 +44,25 @@ Lưu file.
 
 ## Bước 3 — Đưa lên GitHub Pages
 
-1. Tạo repository mới trên GitHub (ví dụ: `sv5t-cntt`).
-2. Đẩy code lên (chỉ cần `index.html`, `.nojekyll`, `README.md` ở thư mục gốc).
+### Cách nhanh (Windows)
+
+Double-click file **`DAY-LEN-GITHUB.bat`** trong thư mục project:
+- Đăng nhập GitHub (nếu được hỏi)
+- Tạo repo **SV5T-DNTU** và push code
+
+### Cách thủ công
+
+1. Tạo repository **SV5T-DNTU** trên GitHub (public)
+2. Push code:
+   ```bash
+   git remote add origin https://github.com/<username>/SV5T-DNTU.git
+   git branch -M main
+   git push -u origin main
+   ```
 3. Vào **Settings** → **Pages**:
    - **Source:** Deploy from a branch
    - **Branch:** `main` / thư mục `/ (root)`
-4. Sau vài phút, trang chạy tại: `https://<username>.github.io/<repo>/`
+4. Sau vài phút, trang chạy tại: `https://<username>.github.io/SV5T-DNTU/`
 
 ## Kiểm tra nhanh
 
