@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Cổng quản lý — Hệ thống xét Sinh viên 5 tốt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/sv5t.css">
+</head>
+<body data-portal="admin">
+<div class="loading" id="loading"><div>Đang xử lý dữ liệu...</div></div>
+<div class="app">
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand-mark">SV5T</div>
+      <span class="topbar-title">Cổng quản lý</span>
+      <span class="topbar-spacer"></span>
+      <span class="portal-switch"><a href="index.html">← Cổng sinh viên</a></span>
+      <span class="topbar-user" id="topUser"></span>
+    </div>
+    <div class="masthead">
+      <div class="org-badge">CLB SV5T · ĐH Công nghệ Đồng Nai</div>
+      <div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>CLB SV5T</div>
+    </div>
+    <div class="hero">
+      <div class="hero-portal-badge">Dành cho người chấm &amp; admin</div>
+      <h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1>
+      <p>Chấm duyệt hồ sơ, quản lý tài khoản, tiêu chí, cấu hình khoa/lớp và xuất báo cáo.</p>
+    </div>
+    <div id="apiStatusBox" style="display:none"></div>
+    <div class="content">
+      <div class="grid">
+        <div class="col-4 box" id="reviewerLoginBox">
+          <div class="box-title"><div><h2>Đăng nhập quản lý</h2><div class="desc">Tài khoản do admin cấp. Sinh viên vui lòng dùng <a href="index.html">cổng sinh viên</a>.</div></div></div>
+          <label>Email / tài khoản quản lý</label><input id="a_username" value="" autocomplete="username">
+          <label style="margin-top:10px">Mật khẩu</label><input id="a_password" type="password" value="" autocomplete="current-password">
+          <button class="btn primary" style="margin-top:12px;width:100%" onclick="login()">Đăng nhập</button>
+          <div id="adminAuthResult"></div>
+        </div>
+
+        <div class="col-12 box" id="reviewerDashboard" style="display:none">
+          <div class="box-title"><div><h2>Bảng điều khiển</h2><div class="desc" id="adminInfoText"></div></div><div class="toolbar"><button class="btn secondary small" onclick="changeMyPassword()">Đổi mật khẩu</button><button class="btn secondary small" onclick="logout()">Đăng xuất</button></div></div>
+          <div id="statsBox" class="stats"></div>
+          <div class="admin-tabs" id="adminTabs">
+            <button class="admin-tab-btn active" onclick="showAdminSection('applications',this)">Hồ sơ</button>
+            <button class="admin-tab-btn" onclick="showAdminSection('users',this)">Tài khoản</button>
+            <button class="admin-tab-btn" onclick="showAdminSection('criteria',this)">Tiêu chí</button>
+            <button class="admin-tab-btn" onclick="showAdminSection('data',this)">Dữ liệu</button>
+          </div>
+          <div class="toolbar">
+            <input id="filterQ" placeholder="Tìm MSSV, họ tên, lớp, khoa...">
+            <select id="filterStatus"><option value="">Tất cả trạng thái</option><option value="SUBMITTED">Đã nộp</option><option value="NEED_SUPPLEMENT">Cần bổ sung</option><option value="FINALIZED">Đã chốt</option></select>
+            <button class="btn primary" onclick="loadApplications()">Lọc</button>
+            <button class="btn secondary" onclick="exportResults()">Xuất Excel</button>
+            <button class="btn primary" onclick="exportResultsPdf()">Xuất PDF</button>
+          </div>
+          <div id="applicationList"></div>
+        </div>
+
+        <div class="col-12 box" id="userManageBox" style="display:none"></div>
+        <div class="col-12 box" id="criteriaManageBox" style="display:none"></div>
+        <div class="col-12 box" id="dataToolsBox" style="display:none"></div>
+        <div class="col-12 box" id="detailBox" style="display:none"></div>
+      </div>
+    </div>
+    <div class="footer">© CLB SV5T · <a href="index.html">Cổng sinh viên</a> · Hệ thống xét Sinh viên 5 tốt</div>
+  </div>
+</div>
+<script src="assets/sv5t.js"></script>
+</body>
+</html>
