@@ -332,16 +332,28 @@ body.dash-body .dash-toolbar select{
   border:0;box-shadow:0 8px 24px rgba(112,144,176,.1);border-radius:12px;
 }
 body.dash-body .app-list-scroll{border:1px solid var(--dash-line)}
+body.dash-body .user-list-scroll{border:1px solid var(--dash-line)}
+body.dash-body .user-form-panel{
+  background:#f8f9ff;
+  border-color:var(--dash-line);
+}
+body.dash-body .user-form-title,
+body.dash-body .user-list-head h3{color:var(--dash-text)}
+body.dash-body .user-list-count{background:var(--dash-primary-soft);color:var(--dash-primary)}
 body.dash-body .app-list-table .app-name{color:var(--dash-text)}
 @media(max-width:768px){
   body.dash-body .app-list-scroll{border:0}
-  body.dash-body .app-list-table tr{
+  body.dash-body .user-list-scroll{border:0}
+  body.dash-body .app-list-table tr,
+  body.dash-body .user-list-table tr{
     background:var(--dash-card);
     border-color:var(--dash-line);
     box-shadow:0 8px 20px rgba(112,144,176,.08);
   }
-  body.dash-body .app-list-table tr td{border-bottom-color:var(--dash-line)}
-  body.dash-body .app-list-table tr td::before{color:var(--dash-muted)}
+  body.dash-body .app-list-table tr td,
+  body.dash-body .user-list-table tr td{border-bottom-color:var(--dash-line)}
+  body.dash-body .app-list-table tr td::before,
+  body.dash-body .user-list-table tr td::before{color:var(--dash-muted)}
 }
 body.dash-body .quick-cards{
   display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;
@@ -453,8 +465,8 @@ body.dash-nav-locked{overflow:hidden}
   body.dash-body .dash-toolbar .btn,
   body.dash-body .dash-toolbar select,
   body.dash-body .dash-toolbar input{width:100%;max-width:none}
-  body.dash-body .table-scroll:not(.app-list-scroll){overflow-x:auto;-webkit-overflow-scrolling:touch}
-  body.dash-body .table-scroll:not(.app-list-scroll) > table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  body.dash-body .table-scroll:not(.app-list-scroll):not(.user-list-scroll){overflow-x:auto;-webkit-overflow-scrolling:touch}
+  body.dash-body .table-scroll:not(.app-list-scroll):not(.user-list-scroll) > table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
 }
 
 /* ----- Smartphone (≤480px) ----- */

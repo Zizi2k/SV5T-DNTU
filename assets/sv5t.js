@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-app-list';
+const APP_BUILD = '20260625-user-list';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -1533,18 +1533,73 @@ async function finalize(appId,mode){try{showLoading(true); await postApi('finali
 async function exportResults(){try{const r=await jsonp('exportResults',{token:APP.token}); window.open(r.url,'_blank')}catch(e){alert(e.message)}}
 async function exportResultsPdf(){try{showLoading(true); const r=await jsonp('exportResultsPdf',{token:APP.token}); window.open(r.url,'_blank')}catch(e){alert(e.message)}finally{showLoading(false)}}
 
-async function loadUsers(){if(APP.user.role!=='ADMIN')return; try{const r=await jsonp('listUsers',{token:APP.token}); userManageBox.style.display='block'; userManageBox.innerHTML=`<div class="box-title"><div><h2>Quản lý tài khoản</h2><div class="desc">Admin có thể tạo tài khoản, khóa/mở, đổi mật khẩu, hoặc <b>xóa tài khoản sinh viên</b> (kèm hồ sơ liên quan).</div></div></div>
-<div class="field-grid">
-  <div class="field col-3"><label>Email / Username</label><input id="u_username" placeholder="reviewer@dntu.edu.vn"></div>
-  <div class="field col-3"><label>Mật khẩu</label><input id="u_password" placeholder="Để trống sẽ dùng 123456"></div>
-  <div class="field col-3"><label>Họ tên</label><input id="u_fullName"></div>
-  <div class="field col-3"><label>Email</label><input id="u_email"></div>
-  <div class="field col-3"><label>Vai trò</label><select id="u_role"><option>REVIEWER</option><option>ADMIN</option><option>STUDENT</option></select></div>
-  <div class="field col-3"><label>Khoa (người chấm)</label><select id="u_faculty">${facultySelectOptions('', true)}</select></div>
-  <div class="field col-3"><label>Trạng thái</label><select id="u_active"><option value="true">Hoạt động</option><option value="false">Khóa</option></select></div>
-</div>
-<button class="btn primary" style="margin:10px 0" onclick="saveUser()">Tạo / cập nhật tài khoản</button>
-<div class="table-scroll"><table><thead><tr><th>Email / Username</th><th>Họ tên</th><th>Vai trò</th><th>Khoa</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${(r.users||[]).map(u=>`<tr><td><b>${esc(u.username)}</b><div class="mini-note">${esc(u.email||'')}</div></td><td>${esc(u.fullName||'')}</td><td>${esc(u.role)}</td><td>${esc(u.faculty||'')}</td><td>${u.active?'<span class="pill ok">Hoạt động</span>':'<span class="pill bad">Đã khóa</span>'}</td><td><div class="account-actions"><button class="btn ${u.active?'warn':'ok'} small" onclick="setUserActive('${esc(u.username)}',${!u.active})">${u.active?'Khóa':'Mở'}</button><button class="btn secondary small" onclick="resetUserDefault('${esc(u.username)}')">MK mặc định</button><button class="btn primary small" onclick="adminChangeUserPassword('${esc(u.username)}')">Đổi MK</button>${String(u.role).toUpperCase()==='STUDENT'?`<button class="btn bad small" onclick="deleteStudentUser('${esc(u.username)}')">Xóa SV</button>`:''}</div></td></tr>`).join('')}</tbody></table></div>`}catch(e){userManageBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}}
+function renderUserRow(u){
+  const role=String(u.role||'').toUpperCase();
+  const isStudent=role==='STUDENT';
+  const deleteBtn=isStudent
+    ? `<button type="button" class="btn bad small" onclick="deleteStudentUser('${esc(u.username)}')">Xóa SV</button>`
+    : '';
+  const rolePill=role==='ADMIN'?'blue':role==='STUDENT'?'warn':'navy';
+  return `<tr>
+    <td data-label="Email / Username" class="user-col-login">
+      <b class="user-login">${esc(u.username)}</b>
+      ${u.email ? `<span class="muted user-email">${esc(u.email)}</span>` : ''}
+    </td>
+    <td data-label="Họ tên" class="user-col-name">${esc(u.fullName||'—')}</td>
+    <td data-label="Vai trò" class="user-col-role"><span class="pill ${rolePill}">${esc(u.role)}</span></td>
+    <td data-label="Khoa" class="user-col-faculty">${esc(u.faculty||'—')}</td>
+    <td data-label="Trạng thái" class="user-col-status">${u.active?'<span class="pill ok">Hoạt động</span>':'<span class="pill bad">Đã khóa</span>'}</td>
+    <td data-label="Thao tác" class="user-col-actions">
+      <div class="account-actions user-row-actions">
+        <button type="button" class="btn ${u.active?'warn':'ok'} small" onclick="setUserActive('${esc(u.username)}',${!u.active})">${u.active?'Khóa':'Mở'}</button>
+        <button type="button" class="btn secondary small" onclick="resetUserDefault('${esc(u.username)}')">MK mặc định</button>
+        <button type="button" class="btn primary small" onclick="adminChangeUserPassword('${esc(u.username)}')">Đổi MK</button>
+        ${deleteBtn}
+      </div>
+    </td>
+  </tr>`;
+}
+async function loadUsers(){
+  if(APP.user.role!=='ADMIN') return;
+  try{
+    const r=await jsonp('listUsers',{token:APP.token});
+    userManageBox.style.display='block';
+    const users=r.users||[];
+    userManageBox.innerHTML=`
+      <div class="box-title">
+        <div>
+          <h2>Quản lý tài khoản</h2>
+          <div class="desc">Admin có thể tạo tài khoản, khóa/mở, đổi mật khẩu, hoặc <b>xóa tài khoản sinh viên</b> (kèm hồ sơ liên quan).</div>
+        </div>
+      </div>
+      <div class="user-form-panel">
+        <h3 class="user-form-title">Tạo / cập nhật tài khoản</h3>
+        <div class="field-grid user-form-grid">
+          <div class="field col-3"><label>Email / Username</label><input id="u_username" placeholder="reviewer@dntu.edu.vn"></div>
+          <div class="field col-3"><label>Mật khẩu</label><input id="u_password" placeholder="Để trống sẽ dùng 123456"></div>
+          <div class="field col-3"><label>Họ tên</label><input id="u_fullName"></div>
+          <div class="field col-3"><label>Email</label><input id="u_email"></div>
+          <div class="field col-3"><label>Vai trò</label><select id="u_role"><option>REVIEWER</option><option>ADMIN</option><option>STUDENT</option></select></div>
+          <div class="field col-3"><label>Khoa (người chấm)</label><select id="u_faculty">${facultySelectOptions('', true)}</select></div>
+          <div class="field col-3"><label>Trạng thái</label><select id="u_active"><option value="true">Hoạt động</option><option value="false">Khóa</option></select></div>
+        </div>
+        <div class="user-form-actions">
+          <button type="button" class="btn primary" onclick="saveUser()">Lưu tài khoản</button>
+        </div>
+      </div>
+      <div class="user-list-head">
+        <h3>Danh sách tài khoản</h3>
+        <span class="user-list-count">${users.length} tài khoản</span>
+      </div>
+      ${users.length
+        ? `<div class="table-scroll user-list-scroll"><table class="user-list-table"><thead><tr>
+            <th>Email / Username</th><th>Họ tên</th><th>Vai trò</th><th>Khoa</th><th>Trạng thái</th><th>Thao tác</th>
+          </tr></thead><tbody>${users.map(renderUserRow).join('')}</tbody></table></div>`
+        : '<div class="alert warn">Chưa có tài khoản nào.</div>'}`;
+  }catch(e){
+    userManageBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>';
+  }
+}
 async function saveUser(){try{await postApi('upsertUser',{token:APP.token,user:{username:u_username.value,passwordRaw:u_password.value,fullName:u_fullName.value,email:u_email.value,role:u_role.value,faculty:u_faculty.value,active:u_active.value==='true'}}); await loadUsers()}catch(e){alert(e.message)}}
 async function loadCriteriaAdmin(){if(APP.user.role!=='ADMIN')return; try{const r=await jsonp('listCriteria',{token:APP.token}); criteriaManageBox.style.display='block'; criteriaManageBox.innerHTML=`<div class="box-title"><div><h2>Quản lý tiêu chí</h2><div class="desc">Admin có thể chỉnh sửa tiêu chí trực tiếp trong Google Sheet CRITERIA hoặc dùng phần này để thêm nhanh.</div></div></div><div class="field-grid"><div class="field col-3"><label>Group ID</label><input id="c_groupId" placeholder="VD: HOC_TAP"></div><div class="field col-3"><label>Tên nhóm</label><input id="c_groupName"></div><div class="field col-6"><label>Nội dung tiêu chí</label><input id="c_label"></div><div class="field col-3"><label>Loại</label><select id="c_itemType"><option value="REQUIRED_EVIDENCE">Tiêu chí bắt buộc có minh chứng</option><option value="OPTION_EVIDENCE">Tiêu chí lựa chọn chỉ cần đạt 01</option><option value="REQUIRED_AUTO">Tự động</option></select></div><div class="field col-3"><label>Rule tự động</label><input id="c_rule" placeholder="GPA_3, NO_F..."></div><div class="field col-3"><label>Thứ tự nhóm</label><input id="c_groupOrder" type="number" value="1"></div><div class="field col-3"><label>Thứ tự tiêu chí</label><input id="c_criterionOrder" type="number" value="1"></div></div><button class="btn primary" style="margin:10px 0" onclick="saveCriterion()">Thêm tiêu chí</button><table><thead><tr><th>Nhóm</th><th>Nội dung</th><th>Loại</th><th>Minh chứng</th><th>Trạng thái</th></tr></thead><tbody>${(r.criteria||[]).map(c=>`<tr><td>${esc(c.groupName)}</td><td>${esc(c.label)}</td><td>${esc(c.itemType)}</td><td>${c.evidenceRequired?'Bắt buộc':''}</td><td>${c.active?badge('PASS'):badge('FAIL')}</td></tr>`).join('')}</tbody></table>`}catch(e){}}
 async function saveCriterion(){try{await postApi('upsertCriterion',{token:APP.token,criterion:{groupId:c_groupId.value,groupName:c_groupName.value,label:c_label.value,itemType:c_itemType.value,rule:c_rule.value,groupOrder:c_groupOrder.value,criterionOrder:c_criterionOrder.value,minOptionPass:1,active:true}}); await loadCriteriaAdmin(); await testApi()}catch(e){alert(e.message)}}
