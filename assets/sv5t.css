@@ -531,3 +531,56 @@
       .criteria-table th:nth-child(4){width:260px}
       .criteria-table th:nth-child(5){width:360px}
     }
+
+    /* ----- Responsive: dashboard forms, tables, admin review ----- */
+    body.dash-body .field-grid .field.col-8,
+    body.dash-body .field-grid .field.col-6,
+    body.dash-body .field-grid .field.col-4,
+    body.dash-body .field-grid .field.col-3{grid-column:span 12}
+
+    @media(max-width:1024px){
+      .table-scroll .criteria-table{min-width:1400px}
+      .admin-review-table{min-width:880px}
+      .criteria-table td:nth-child(3),
+      .criteria-table td:nth-child(4),
+      .criteria-table td:nth-child(5){min-width:0}
+    }
+
+    @media(max-width:768px){
+      body.dash-body .personal-info-actions .btn,
+      body.dash-body .edit-window-actions .btn,
+      body.dash-body .personal-info-actions .toolbar,
+      body.dash-body .edit-window-actions{flex-direction:column;align-items:stretch}
+      body.dash-body .personal-info-actions .btn,
+      body.dash-body .edit-window-actions .btn{width:100%}
+      .table-scroll.criteria-scroll,
+      .admin-review-scroll{max-height:min(58vh,560px)}
+      .table-scroll .criteria-table{min-width:1100px}
+      .admin-review-table{min-width:680px}
+      .admin-review-table .review-col{min-width:150px;width:150px}
+      .review-compact-actions .btn{min-height:38px}
+      .detail-review-head .box-title{display:block}
+      .detail-review-head .box-title .btn{margin-top:10px;width:100%}
+      .detail-finalize-actions .btn{flex:1 1 calc(50% - 5px)}
+      .account-actions .btn{flex:1 1 auto}
+      body.dash-body .toolbar:not(.edit-window-actions):not(.personal-info-actions) .btn{
+        flex:1 1 calc(50% - 5px);min-width:120px;
+      }
+    }
+
+    @media(max-width:480px){
+      .table-scroll .criteria-table{min-width:980px}
+      .admin-review-table{min-width:600px}
+      .review-compact-actions .btn{flex:1 1 calc(50% - 3px)}
+      .review-compact-actions .btn.primary{flex:1 1 100%}
+      .detail-finalize-actions{flex-direction:column}
+      .detail-finalize-actions .btn{width:100%}
+      body.dash-body .toolbar .btn{width:100%;flex:1 1 100%}
+      .evidence-upload-grid{grid-template-columns:1fr}
+      .ev-kind-box{margin-bottom:8px}
+    }
+
+    @media(max-width:360px){
+      .table-scroll .criteria-table{min-width:900px}
+      .pill{font-size:10px;padding:3px 8px}
+    }

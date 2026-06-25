@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-admin-review-ui';
+const APP_BUILD = '20260625-responsive';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -127,8 +127,21 @@ function showDashApp(){
   const dash=document.getElementById('dashApp');
   if(auth) auth.style.display='none';
   if(dash) dash.classList.add('active');
+  closeDashSidebar();
+}
+function toggleDashSidebar(){
+  const app=document.getElementById('dashApp');
+  if(!app) return;
+  const open=app.classList.toggle('nav-open');
+  document.body.classList.toggle('dash-nav-locked', open);
+}
+function closeDashSidebar(){
+  const app=document.getElementById('dashApp');
+  if(app) app.classList.remove('nav-open');
+  document.body.classList.remove('dash-nav-locked');
 }
 function showAuthScreen(){
+  closeDashSidebar();
   const auth=document.getElementById('authScreen');
   const dash=document.getElementById('dashApp');
   if(auth) auth.style.display='flex';
@@ -236,6 +249,7 @@ function renderDashCharts(s){
     </div>`;
 }
 function showStudentSection(section, btn){
+  closeDashSidebar();
   const overview=document.getElementById('studentOverviewSection');
   const appSec=document.getElementById('studentApplicationSection');
   document.querySelectorAll('.dash-sidebar .dash-nav .dash-nav-item').forEach(b=>b.classList.remove('active'));
@@ -1050,6 +1064,7 @@ async function saveApplication(submitNow){
 
 
 function showAdminSection(section, btn){
+  closeDashSidebar();
   document.querySelectorAll('.dash-nav-item[data-section]').forEach(b=>{
     b.classList.toggle('active', b===btn);
   });
@@ -1471,3 +1486,4 @@ async function loadCriteriaAdmin(){if(APP.user.role!=='ADMIN')return; try{const 
 async function saveCriterion(){try{await postApi('upsertCriterion',{token:APP.token,criterion:{groupId:c_groupId.value,groupName:c_groupName.value,label:c_label.value,itemType:c_itemType.value,rule:c_rule.value,groupOrder:c_groupOrder.value,criterionOrder:c_criterionOrder.value,minOptionPass:1,active:true}}); await loadCriteriaAdmin(); await testApi()}catch(e){alert(e.message)}}
 
 window.addEventListener('load', init);
+window.addEventListener('resize', ()=>{ if(window.innerWidth > 1024) closeDashSidebar(); });

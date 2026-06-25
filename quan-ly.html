@@ -32,6 +32,7 @@
 </div>
 
 <div id="dashApp" class="dash-app">
+  <div class="dash-sidebar-overlay" onclick="closeDashSidebar()"></div>
   <aside class="dash-sidebar">
     <div class="dash-brand">
       <img src="assets/logo.png" alt="Logo">
@@ -58,6 +59,7 @@
 
   <div class="dash-center">
     <header class="dash-header">
+      <button type="button" class="dash-menu-btn" id="dashMenuBtn" aria-label="Mở menu" onclick="toggleDashSidebar()">☰</button>
       <h1 id="dashPageTitle">Dashboard</h1>
       <div class="dash-search" id="dashSearchWrap">
         <input id="filterQ" placeholder="Tìm MSSV, họ tên, lớp, khoa..." onkeydown="if(event.key==='Enter')loadApplications()">
