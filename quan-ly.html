@@ -3,71 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Cổng quản lý — Hệ thống xét Sinh viên 5 tốt</title>
+  <title>Cổng quản lý — SV5T</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/sv5t.css">
+  <link rel="stylesheet" href="assets/dash-theme.css">
+  <link rel="icon" type="image/png" href="assets/logo.png">
 </head>
-<body data-portal="admin">
+<body data-portal="admin" class="dash-body">
 <div class="loading" id="loading"><div>Đang xử lý dữ liệu...</div></div>
-<div class="app">
-  <div class="shell">
-    <div class="topbar">
-      <div class="brand-mark">SV5T</div>
-      <span class="topbar-title">Cổng quản lý</span>
-      <span class="topbar-spacer"></span>
-      <span class="portal-switch"><a href="index.html">← Cổng sinh viên</a></span>
-      <span class="topbar-user" id="topUser"></span>
-    </div>
-    <div class="masthead">
-      <div class="org-badge">CLB SV5T · ĐH Công nghệ Đồng Nai</div>
-      <div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>CLB SV5T</div>
-    </div>
-    <div class="hero">
-      <div class="hero-portal-badge">Dành cho người chấm &amp; admin</div>
-      <h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1>
-      <p>Chấm duyệt hồ sơ, quản lý tài khoản, tiêu chí, cấu hình khoa/lớp và xuất báo cáo.</p>
-    </div>
-    <div id="apiStatusBox" style="display:none"></div>
-    <div class="content">
-      <div class="grid">
-        <div class="col-4 box" id="reviewerLoginBox">
-          <div class="box-title"><div><h2>Đăng nhập quản lý</h2><div class="desc">Tài khoản do admin cấp. Sinh viên vui lòng dùng <a href="index.html">cổng sinh viên</a>.</div></div></div>
-          <label>Email / tài khoản quản lý</label><input id="a_username" value="" autocomplete="username">
-          <label style="margin-top:10px">Mật khẩu</label><input id="a_password" type="password" value="" autocomplete="current-password">
-          <button class="btn primary" style="margin-top:12px;width:100%" onclick="login()">Đăng nhập</button>
-          <div id="adminAuthResult"></div>
-        </div>
 
-        <div class="col-12 box" id="reviewerDashboard" style="display:none">
-          <div class="box-title"><div><h2>Bảng điều khiển</h2><div class="desc" id="adminInfoText"></div></div><div class="toolbar"><button class="btn secondary small" onclick="changeMyPassword()">Đổi mật khẩu</button><button class="btn secondary small" onclick="logout()">Đăng xuất</button></div></div>
-          <div id="statsBox" class="stats"></div>
-          <div class="admin-tabs" id="adminTabs">
-            <button class="admin-tab-btn active" onclick="showAdminSection('applications',this)">Hồ sơ</button>
-            <button class="admin-tab-btn" onclick="showAdminSection('users',this)">Tài khoản</button>
-            <button class="admin-tab-btn" onclick="showAdminSection('criteria',this)">Tiêu chí</button>
-            <button class="admin-tab-btn" onclick="showAdminSection('data',this)">Dữ liệu</button>
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card" id="reviewerLoginBox">
+    <div class="auth-brand">
+      <img src="assets/logo.png" alt="CLB Sinh viên 5 tốt DNTU">
+      <h1>Cổng quản lý</h1>
+      <p>Đăng nhập để chấm hồ sơ, quản trị tài khoản và cấu hình hệ thống.</p>
+    </div>
+    <label>Email / tài khoản</label>
+    <input id="a_username" value="" autocomplete="username" placeholder="admin">
+    <label style="margin-top:12px">Mật khẩu</label>
+    <input id="a_password" type="password" value="" autocomplete="current-password" placeholder="••••••">
+    <button class="btn primary" style="margin-top:16px;width:100%" onclick="login()">Đăng nhập</button>
+    <div id="adminAuthResult"></div>
+    <div class="auth-switch">Sinh viên? <a href="index.html">Vào cổng sinh viên</a></div>
+  </div>
+</div>
+
+<div id="dashApp" class="dash-app">
+  <aside class="dash-sidebar">
+    <div class="dash-brand">
+      <img src="assets/logo.png" alt="Logo">
+      <div class="dash-brand-text"><b>SV5T DNTU</b><span>Quản lý xét duyệt</span></div>
+    </div>
+    <nav class="dash-nav" id="adminTabs">
+      <button type="button" class="dash-nav-item active" data-section="applications" onclick="showAdminSection('applications',this)">
+        <span class="nav-ico">📋</span> Hồ sơ
+      </button>
+      <button type="button" class="dash-nav-item" data-section="users" onclick="showAdminSection('users',this)">
+        <span class="nav-ico">👥</span> Tài khoản
+      </button>
+      <button type="button" class="dash-nav-item" data-section="criteria" onclick="showAdminSection('criteria',this)">
+        <span class="nav-ico">✓</span> Tiêu chí
+      </button>
+      <button type="button" class="dash-nav-item" data-section="data" onclick="showAdminSection('data',this)">
+        <span class="nav-ico">⚙</span> Cấu hình
+      </button>
+    </nav>
+    <div class="dash-nav-footer">
+      <a href="index.html" class="dash-nav-item"><span class="nav-ico">🎓</span> Cổng sinh viên</a>
+    </div>
+  </aside>
+
+  <div class="dash-center">
+    <header class="dash-header">
+      <h1 id="dashPageTitle">Dashboard</h1>
+      <div class="dash-search" id="dashSearchWrap">
+        <input id="filterQ" placeholder="Tìm MSSV, họ tên, lớp, khoa..." onkeydown="if(event.key==='Enter')loadApplications()">
+      </div>
+      <div class="dash-header-actions">
+        <button class="btn secondary small" onclick="changeMyPassword()">Đổi MK</button>
+        <button class="btn secondary small" onclick="logout()">Đăng xuất</button>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <div id="apiStatusBox" style="display:none"></div>
+
+      <div id="reviewerDashboard">
+        <div id="statsBox" class="dash-stats"></div>
+        <div id="dashCharts" class="dash-grid-2"></div>
+        <div class="dash-panel">
+          <div class="dash-panel-head">
+            <div><h2>Danh sách hồ sơ</h2><div class="desc" id="adminInfoText"></div></div>
           </div>
-          <div class="toolbar">
-            <input id="filterQ" placeholder="Tìm MSSV, họ tên, lớp, khoa...">
+          <div class="dash-toolbar" id="applicationsToolbar">
             <select id="filterStatus"><option value="">Tất cả trạng thái</option><option value="SUBMITTED">Đã nộp</option><option value="NEED_SUPPLEMENT">Cần bổ sung</option><option value="FINALIZED">Đã chốt</option></select>
-            <button class="btn primary" onclick="loadApplications()">Lọc</button>
-            <button class="btn secondary" onclick="exportResults()">Xuất Excel</button>
-            <button class="btn primary" onclick="exportResultsPdf()">Xuất PDF</button>
+            <button class="btn primary small" onclick="loadApplications()">Lọc</button>
+            <button class="btn secondary small" onclick="exportResults()">Xuất Excel</button>
+            <button class="btn primary small" onclick="exportResultsPdf()">Xuất PDF</button>
           </div>
           <div id="applicationList"></div>
         </div>
-
-        <div class="col-12 box" id="userManageBox" style="display:none"></div>
-        <div class="col-12 box" id="criteriaManageBox" style="display:none"></div>
-        <div class="col-12 box" id="dataToolsBox" style="display:none"></div>
-        <div class="col-12 box" id="detailBox" style="display:none"></div>
       </div>
-    </div>
-    <div class="footer">© CLB SV5T · <a href="index.html">Cổng sinh viên</a> · Hệ thống xét Sinh viên 5 tốt</div>
+
+      <div id="userManageBox" class="dash-panel" style="display:none"></div>
+      <div id="criteriaManageBox" class="dash-panel" style="display:none"></div>
+      <div id="dataToolsBox" class="dash-panel" style="display:none"></div>
+      <div id="detailBox" class="dash-panel" style="display:none"></div>
+    </main>
   </div>
+
+  <aside class="dash-aside" id="dashAside"></aside>
 </div>
+
 <script src="assets/sv5t.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-split-portal';
+const APP_BUILD = '20260625-edusync-ui';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -112,7 +112,95 @@ async function init(){
   try{ await testApi(); }catch(e){}
   if(APP.token && APP.user){
     if(!ensurePortalRole(APP.user)) return;
+    showDashApp();
     applyLoginUi();
+  }else{
+    showAuthScreen();
+  }
+}
+function showDashApp(){
+  const auth=document.getElementById('authScreen');
+  const dash=document.getElementById('dashApp');
+  if(auth) auth.style.display='none';
+  if(dash) dash.classList.add('active');
+}
+function showAuthScreen(){
+  const auth=document.getElementById('authScreen');
+  const dash=document.getElementById('dashApp');
+  if(auth) auth.style.display='flex';
+  if(dash) dash.classList.remove('active');
+}
+function renderMiniCalendar(){
+  const d=new Date();
+  const y=d.getFullYear(), m=d.getMonth();
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const months=['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  let cells='';
+  const pad=first===0?6:first-1;
+  for(let i=0;i<pad;i++) cells+='<div class="cal-day muted"></div>';
+  for(let day=1;day<=days;day++){
+    cells+=`<div class="cal-day ${day===d.getDate()?'today':''}">${day}</div>`;
+  }
+  return `<div class="dash-mini-cal"><h4>${months[m]} ${y}</h4><div class="cal-grid">
+    <div class="cal-head">T2</div><div class="cal-head">T3</div><div class="cal-head">T4</div><div class="cal-head">T5</div><div class="cal-head">T6</div><div class="cal-head">T7</div><div class="cal-head">CN</div>
+    ${cells}</div></div>`;
+}
+function renderDashAside(){
+  const aside=document.getElementById('dashAside');
+  if(!aside || !APP.user) return;
+  const u=APP.user;
+  const initials=(u.fullName||u.username||'?').trim().charAt(0).toUpperCase();
+  const role=u.role==='STUDENT'?'Sinh viên':(u.role==='ADMIN'?'Admin':'Người chấm');
+  aside.innerHTML=`
+    <div class="dash-profile">
+      <div class="dash-avatar">${esc(initials)}</div>
+      <div><b>${esc(u.fullName||u.username)}</b><span>${esc(role)}</span></div>
+    </div>
+    ${renderMiniCalendar()}
+    <div class="dash-notice">
+      <h4>Thông báo</h4>
+      <div class="dash-notice-item"><b>Hệ thống SV5T</b><span>Nộp minh chứng đúng hạn xét duyệt.</span></div>
+      <div class="dash-notice-item"><b>CLB Sinh viên 5 tốt</b><span>ĐH Công nghệ Đồng Nai</span></div>
+    </div>`;
+}
+function renderDashCharts(s){
+  const el=document.getElementById('dashCharts');
+  if(!el) return;
+  const pass=Number(s.pass||0), fail=Number(s.fail||0), sum=pass+fail||1;
+  const passPct=Math.round(pass/sum*100);
+  const max=Math.max(Number(s.total||0),Number(s.submitted||0),Number(s.needSupplement||0),Number(s.finalized||0),1);
+  const bar=(val,label,blue)=>`<div class="dash-bar-col"><div class="dash-bar ${blue?'blue':''}" style="height:${Math.max(12,Math.round((val||0)/max*130))}px"></div><div class="dash-bar-label">${label}</div></div>`;
+  el.innerHTML=`
+    <div class="dash-chart-card"><h3>Phân bổ kết quả</h3>
+      <div class="dash-donut-wrap">
+        <div class="dash-donut" style="background:conic-gradient(var(--dash-orange) 0 ${passPct}%, var(--dash-blue) ${passPct}% 100%)">
+          <div class="dash-donut-center">${pass+fail}</div>
+        </div>
+        <div class="dash-legend">
+          <div class="dash-legend-item"><span class="dash-legend-dot orange"></span> Đạt: ${pass}</div>
+          <div class="dash-legend-item"><span class="dash-legend-dot blue"></span> Không đạt: ${fail}</div>
+        </div>
+      </div>
+    </div>
+    <div class="dash-chart-card"><h3>Trạng thái hồ sơ</h3>
+      <div class="dash-bars">${bar(s.submitted,'Đã nộp',false)}${bar(s.needSupplement,'Bổ sung',true)}${bar(s.finalized,'Đã chốt',false)}${bar(s.total,'Tổng',true)}</div>
+    </div>`;
+}
+function showStudentSection(section, btn){
+  const overview=document.getElementById('studentOverviewSection');
+  const appSec=document.getElementById('studentApplicationSection');
+  document.querySelectorAll('.dash-sidebar .dash-nav .dash-nav-item').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const title=document.getElementById('dashPageTitle');
+  if(section==='overview'){
+    if(title) title.textContent='Tổng quan';
+    if(overview) overview.style.display='block';
+    if(appSec) appSec.style.display='none';
+  }else{
+    if(title) title.textContent='Hồ sơ & minh chứng';
+    if(overview) overview.style.display='none';
+    if(appSec) appSec.style.display='block';
   }
 }
 async function testApi(){
@@ -177,17 +265,26 @@ async function login(){
   finally{showLoading(false)}
 }
 function applyLoginUi(){
-  const topUserEl=document.getElementById('topUser');
-  if(topUserEl) topUserEl.textContent = APP.user ? (APP.user.fullName || APP.user.username) : '';
   if(isStudentPortal()){
     if(APP.user.role!=='STUDENT'){ redirectToPortal('admin'); return; }
-    studentAuthBox.style.display='none'; studentProfileBox.style.display='block';
-    studentInfoText.textContent=`${APP.user.fullName} - ${APP.user.studentId||''} - ${APP.user.faculty||''} - ${APP.user.className||''}`;
+    showDashApp();
+    const info=document.getElementById('studentInfoText');
+    if(info) info.textContent=`${APP.user.fullName} - ${APP.user.studentId||''} - ${APP.user.faculty||''} - ${APP.user.className||''}`;
+    renderDashAside();
+    const navBtn=document.querySelector('.dash-sidebar .dash-nav .dash-nav-item');
+    showStudentSection('overview', navBtn);
     loadMyApplication();
   } else {
     if(APP.user.role==='STUDENT'){ redirectToPortal('student'); return; }
-    reviewerLoginBox.style.display='none'; reviewerDashboard.style.display='block';
-    adminInfoText.textContent=`${APP.user.fullName||APP.user.username} - ${APP.user.role}`;
+    showDashApp();
+    const info=document.getElementById('adminInfoText');
+    if(info) info.textContent=`${APP.user.fullName||APP.user.username} - ${APP.user.role}`;
+    document.querySelectorAll('[data-section="users"],[data-section="criteria"],[data-section="data"]').forEach(el=>{
+      el.style.display=APP.user.role==='ADMIN'?'flex':'none';
+    });
+    renderDashAside();
+    const navBtn=document.querySelector('.dash-nav-item[data-section="applications"]');
+    showAdminSection('applications', navBtn);
     loadDashboard();
   }
 }
@@ -202,7 +299,6 @@ async function loadMyApplication(){
     showLoading(true);
     const res=await jsonp('myApplication',{token:APP.token});
     APP.myApp=res.application?res:null;
-    studentApplicationBox.style.display='block';
     app_schoolYear.value=(res.application&&res.application.schoolYear)||'';
     if(!app_schoolYear.value){ const bs=await jsonp('bootstrap'); app_schoolYear.value=bs.schoolYear||'2025-2026'; }
     renderCriteriaTable(res);
@@ -682,20 +778,23 @@ async function saveApplication(submitNow){
 
 
 function showAdminSection(section, btn){
-  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  const map = {
-    applications:['reviewerDashboard'],
-    users:['userManageBox'],
-    criteria:['criteriaManageBox'],
-    data:['dataToolsBox']
-  };
-  ['applicationList','userManageBox','criteriaManageBox','dataToolsBox'].forEach(id=>{
+  document.querySelectorAll('.dash-nav-item[data-section]').forEach(b=>{
+    b.classList.toggle('active', b===btn);
+  });
+  const titles={applications:'Dashboard',users:'Tài khoản',criteria:'Tiêu chí',data:'Cấu hình'};
+  const titleEl=document.getElementById('dashPageTitle');
+  if(titleEl) titleEl.textContent=titles[section]||'Dashboard';
+  const searchWrap=document.getElementById('dashSearchWrap');
+  if(searchWrap) searchWrap.style.display=section==='applications'?'block':'none';
+  const reviewerDash=document.getElementById('reviewerDashboard');
+  if(reviewerDash) reviewerDash.style.display=section==='applications'?'block':'none';
+  ['userManageBox','criteriaManageBox','dataToolsBox'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.style.display='none';
   });
-  if(section==='applications'){
-    applicationList.style.display='block';
+  if(section!=='applications'){
+    const detail=document.getElementById('detailBox');
+    if(detail) detail.style.display='none';
   }
   if(section==='users'){
     userManageBox.style.display='block';
@@ -885,13 +984,40 @@ async function adminChangeUserPassword(username){
 }
 
 
-async function loadDashboard(){await Promise.all([loadStats(),loadApplications()]); if(APP.user.role==='ADMIN'){loadUsers();loadCriteriaAdmin();renderDataTools()} else { if(adminTabs) adminTabs.style.display='none'; }}
-async function loadStats(){try{const r=await jsonp('stats',{token:APP.token}); const s=r.stats; statsBox.innerHTML=[['total','Tổng'],['submitted','Đã nộp'],['needSupplement','Cần bổ sung'],['finalized','Đã chốt'],['pass','Đạt'],['fail','Không đạt']].map(([k,l])=>`<div class="stat"><div class="num">${s[k]}</div><div class="label">${l}</div></div>`).join('')}catch(e){statsBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}}
+async function loadDashboard(){
+  await Promise.all([loadStats(),loadApplications()]);
+  if(APP.user.role==='ADMIN'){loadUsers();loadCriteriaAdmin();renderDataTools();}
+}
+async function loadStats(){
+  try{
+    const r=await jsonp('stats',{token:APP.token});
+    const s=r.stats;
+    const cards=[
+      ['total','Tổng hồ sơ','orange'],
+      ['submitted','Đã nộp','orange2'],
+      ['needSupplement','Cần bổ sung','orange3'],
+      ['pass','Đạt','blue']
+    ];
+    if(!statsBox) return;
+    statsBox.innerHTML=cards.map(([k,l,cls])=>`<div class="dash-stat ${cls}"><div class="dash-stat-label">${l}</div><div class="dash-stat-num">${s[k]||0}</div></div>`).join('');
+    renderDashCharts(s);
+  }catch(e){
+    if(statsBox) statsBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>';
+  }
+}
 async function loadApplications(){
   try{const r=await jsonp('listApplications',{token:APP.token,q:filterQ.value,status:filterStatus.value}); const rows=r.applications||[]; applicationList.innerHTML=rows.length?`<table><thead><tr><th>Mã hồ sơ</th><th>Sinh viên</th><th>Lớp/Khoa</th><th>Trạng thái</th><th>Nhóm đạt</th><th></th></tr></thead><tbody>${rows.map(a=>`<tr><td><b>${esc(a.applicationId)}</b><br><span class="muted">${fmtDate(a.updatedAt)}</span></td><td>${esc(a.fullName)}<br><span class="muted">${esc(a.studentId)}</span></td><td>${esc(a.className)}<br><span class="muted">${esc(a.faculty)}</span></td><td>${badge(a.status)} ${a.finalResult?'<br>'+badge(a.finalResult):''}</td><td>${a.passGroups||0}/6</td><td><div class="account-actions"><button class="btn primary small" onclick="openDetail('${esc(a.applicationId)}')">Mở chấm</button>${APP.user.role==='ADMIN'?`<button class="btn bad small" onclick="deleteApplication('${esc(a.applicationId)}')">Xóa</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="alert warn">Không có hồ sơ.</div>'}catch(e){applicationList.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}
 }
 async function openDetail(id){
-  try{showLoading(true); const r=await jsonp('applicationDetail',{token:APP.token,applicationId:id}); detailBox.style.display='block'; detailBox.innerHTML=renderDetailTable(r); detailBox.scrollIntoView({behavior:'smooth'});}catch(e){alert(e.message)}finally{showLoading(false)}
+  try{
+    showLoading(true);
+    const r=await jsonp('applicationDetail',{token:APP.token,applicationId:id});
+    detailBox.style.display='block';
+    detailBox.innerHTML=renderDetailTable(r);
+    const navBtn=document.querySelector('.dash-nav-item[data-section="applications"]');
+    showAdminSection('applications', navBtn);
+    detailBox.scrollIntoView({behavior:'smooth'});
+  }catch(e){alert(e.message)}finally{showLoading(false)}
 }
 function renderReviewBlock(appId, critId, level, item){
   const lv=getItemLevel(item, level);

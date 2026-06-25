@@ -14,15 +14,18 @@
     a:hover{color:var(--navy)}
     .app{max-width:1440px;width:100%;margin:0 auto;padding:20px 16px 32px}
     .shell{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
-    .topbar{min-height:52px;background:linear-gradient(135deg,var(--navy) 0%,#163a6b 100%);color:#fff;display:flex;align-items:center;gap:14px;padding:0 24px;font-size:13px}
-    .brand-mark{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;letter-spacing:-.02em;flex-shrink:0}
+    .topbar{min-height:56px;background:linear-gradient(135deg,var(--navy) 0%,#163a6b 100%);color:#fff;display:flex;align-items:center;gap:14px;padding:0 24px;font-size:13px}
+    .brand-mark{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.35);box-shadow:0 2px 8px rgba(0,0,0,.15);text-decoration:none}
+    .brand-mark img{width:100%;height:100%;object-fit:cover;display:block}
     .topbar-title{font-weight:600;font-size:14px;letter-spacing:.01em}.topbar-spacer{flex:1}
     .topbar-user{font-size:13px;font-weight:500;padding:6px 12px;background:rgba(255,255,255,.1);border-radius:999px;border:1px solid rgba(255,255,255,.15)}
     .portal-switch a{color:rgba(255,255,255,.92);font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);white-space:nowrap}
     .portal-switch a:hover{color:#fff;background:rgba(255,255,255,.16)}
     .hero-portal-badge{display:inline-block;margin-bottom:8px;font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;background:var(--blueBg);border:1px solid #bfdbfe;padding:5px 12px;border-radius:999px}
-    #reviewerLoginBox .box-title h2::before{background:linear-gradient(135deg,#eef2ff,#e0e7ff);border-color:#c7d2fe}
+    #reviewerLoginBox .box-title h2::before{background-image:url('logo.png');background-size:cover;background-position:center;border-color:#c7d2fe}
     .masthead{text-align:center;padding:28px 32px 20px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-bottom:1px solid var(--line);position:relative}
+    .masthead-logo{width:104px;height:104px;margin:0 auto 16px;border-radius:50%;overflow:hidden;border:3px solid #e2e8f0;box-shadow:0 6px 20px rgba(15,23,42,.1);background:#fff}
+    .masthead-logo img{width:100%;height:100%;object-fit:cover;display:block}
     .masthead::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80px;height:3px;background:linear-gradient(90deg,var(--accent),var(--sky));border-radius:999px}
     .org-badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);background:var(--blueBg);border:1px solid #bfdbfe;padding:5px 14px;border-radius:999px;margin-bottom:14px}
     .org{font-weight:700;font-size:15px;line-height:1.7;color:var(--navy);letter-spacing:.04em;text-transform:uppercase}
@@ -64,7 +67,7 @@
     #studentAuthBox,#reviewerLoginBox{grid-column:1/-1;width:100%;max-width:480px;justify-self:center;margin:8px auto 24px}
     #reviewerLoginBox{max-width:420px}
     #studentAuthBox .box-title,#reviewerLoginBox .box-title{display:block;text-align:center}
-    #studentAuthBox .box-title h2::before,#reviewerLoginBox .box-title h2::before{content:"";display:block;width:48px;height:48px;margin:0 auto 14px;background:linear-gradient(135deg,var(--blueBg),#dbeafe);border-radius:14px;border:1px solid #bfdbfe}
+    #studentAuthBox .box-title h2::before,#reviewerLoginBox .box-title h2::before{content:"";display:block;width:72px;height:72px;margin:0 auto 14px;background:url('logo.png') center/cover no-repeat;border-radius:50%;border:2px solid #bfdbfe;box-shadow:0 4px 14px rgba(15,23,42,.08)}
     table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
     th,td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
     tr:last-child td{border-bottom:0}

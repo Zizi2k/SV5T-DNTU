@@ -3,66 +3,93 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Cổng sinh viên — Hệ thống xét Sinh viên 5 tốt</title>
+  <title>Cổng sinh viên — SV5T</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/sv5t.css">
+  <link rel="stylesheet" href="assets/dash-theme.css">
+  <link rel="icon" type="image/png" href="assets/logo.png">
 </head>
-<body data-portal="student">
+<body data-portal="student" class="dash-body">
 <div class="loading" id="loading"><div>Đang xử lý dữ liệu...</div></div>
-<div class="app">
-  <div class="shell">
-    <div class="topbar">
-      <div class="brand-mark">SV5T</div>
-      <span class="topbar-title">Cổng sinh viên</span>
-      <span class="topbar-spacer"></span>
-      <span class="portal-switch"><a href="quan-ly.html">Cổng quản lý →</a></span>
-      <span class="topbar-user" id="topUser"></span>
-    </div>
-    <div class="masthead">
-      <div class="org-badge">CLB SV5T · ĐH Công nghệ Đồng Nai</div>
-      <div class="org" id="orgText">HỘI SINH VIÊN VIỆT NAM<br>TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI<br>CLB SV5T</div>
-    </div>
-    <div class="hero">
-      <div class="hero-portal-badge">Dành cho sinh viên</div>
-      <h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1>
-      <p>Đăng ký, nộp minh chứng, theo dõi kết quả và bổ sung hồ sơ khi được yêu cầu.</p>
-    </div>
-    <div id="apiStatusBox" style="display:none"></div>
-    <div class="content">
-      <div class="grid">
-        <div class="col-5 box" id="studentAuthBox">
-          <div class="box-title"><div><h2>Đăng nhập sinh viên</h2><div class="desc">Dùng email sinh viên để đăng nhập hoặc đăng ký tài khoản mới.</div></div></div>
-          <div class="field-grid">
-            <div class="field col-6"><label>Email sinh viên</label><input id="s_username" type="email" placeholder="email@dntu.edu.vn" autocomplete="username"></div>
-            <div class="field col-6"><label>Mật khẩu</label><input id="s_password" type="password" placeholder="Mật khẩu" autocomplete="current-password"></div>
-          </div>
-          <div class="toolbar" style="margin-top:12px">
-            <button class="btn primary" onclick="login()">Đăng nhập</button>
-            <button class="btn secondary" onclick="toggleRegister()">Đăng ký tài khoản</button>
-          </div>
-          <div id="registerBox" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-            <div class="alert info"><b>Đăng ký tài khoản sinh viên:</b> nhập email sinh viên và mật khẩu ở phía trên, sau khi đăng nhập hệ thống sẽ yêu cầu nhập thông tin cá nhân.</div>
-            <button class="btn primary" onclick="registerStudent()">Tạo tài khoản sinh viên</button>
-          </div>
-          <div id="studentAuthResult"></div>
-        </div>
 
-        <div class="col-12 box" id="studentProfileBox" style="display:none">
-          <div class="box-title"><div><h2>Hồ sơ của sinh viên</h2><div class="desc" id="studentInfoText"></div></div><div class="toolbar"><button class="btn secondary small" onclick="changeMyPassword()">Đổi mật khẩu</button><button class="btn secondary small" onclick="logout()">Đăng xuất</button></div></div>
-          <button class="btn primary" onclick="loadMyApplication()">Tải lại hồ sơ</button>
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card" id="studentAuthBox">
+    <div class="auth-brand">
+      <img src="assets/logo.png" alt="CLB Sinh viên 5 tốt DNTU">
+      <h1 id="appTitle">Hệ thống xét Sinh viên 5 tốt</h1>
+      <p>Đăng nhập để nộp hồ sơ, tải minh chứng và theo dõi kết quả xét duyệt.</p>
+    </div>
+    <div class="field-grid">
+      <div class="field col-12"><label>Email sinh viên</label><input id="s_username" type="email" placeholder="email@dntu.edu.vn" autocomplete="username"></div>
+      <div class="field col-12"><label>Mật khẩu</label><input id="s_password" type="password" placeholder="Mật khẩu" autocomplete="current-password"></div>
+    </div>
+    <div class="toolbar" style="margin-top:14px">
+      <button class="btn primary" style="flex:1" onclick="login()">Đăng nhập</button>
+      <button class="btn secondary" onclick="toggleRegister()">Đăng ký</button>
+    </div>
+    <div id="registerBox" style="display:none;margin-top:16px;border-top:1px solid var(--dash-line);padding-top:14px">
+      <div class="alert info"><b>Đăng ký:</b> nhập email và mật khẩu ở trên rồi bấm tạo tài khoản.</div>
+      <button class="btn primary" onclick="registerStudent()">Tạo tài khoản sinh viên</button>
+    </div>
+    <div id="studentAuthResult"></div>
+    <div class="auth-switch">Người chấm / Admin? <a href="quan-ly.html">Vào cổng quản lý</a></div>
+  </div>
+</div>
+
+<div id="dashApp" class="dash-app">
+  <aside class="dash-sidebar">
+    <div class="dash-brand">
+      <img src="assets/logo.png" alt="Logo">
+      <div class="dash-brand-text"><b>SV5T DNTU</b><span>Cổng sinh viên</span></div>
+    </div>
+    <nav class="dash-nav">
+      <button type="button" class="dash-nav-item active" onclick="showStudentSection('overview',this)">
+        <span class="nav-ico">🏠</span> Tổng quan
+      </button>
+      <button type="button" class="dash-nav-item" onclick="showStudentSection('application',this)">
+        <span class="nav-ico">📄</span> Hồ sơ &amp; minh chứng
+      </button>
+    </nav>
+    <div class="dash-nav-footer">
+      <a href="quan-ly.html" class="dash-nav-item"><span class="nav-ico">⚙</span> Cổng quản lý</a>
+    </div>
+  </aside>
+
+  <div class="dash-center">
+    <header class="dash-header">
+      <h1 id="dashPageTitle">Tổng quan</h1>
+      <div class="dash-header-actions">
+        <button class="btn secondary small" onclick="loadMyApplication()">Tải lại</button>
+        <button class="btn secondary small" onclick="changeMyPassword()">Đổi MK</button>
+        <button class="btn secondary small" onclick="logout()">Đăng xuất</button>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <div id="apiStatusBox" style="display:none"></div>
+
+      <div id="studentOverviewSection">
+        <div class="dash-panel" id="studentProfileBox">
+          <div class="dash-panel-head">
+            <div><h2>Hồ sơ sinh viên</h2><div class="desc" id="studentInfoText"></div></div>
+          </div>
           <div id="studentStatus"></div>
           <div id="workflowBox"></div>
         </div>
+      </div>
 
-        <div class="col-12 box" id="studentApplicationBox" style="display:none">
-          <div class="box-title"><div><h2>Thông tin cá nhân</h2><div class="desc">Nhập thông tin cơ bản và nộp minh chứng theo từng tiêu chí xét Sinh viên 5 tốt.</div></div></div>
+      <div id="studentApplicationSection" style="display:none">
+        <div class="dash-panel" id="studentApplicationBox">
+          <div class="dash-panel-head">
+            <div><h2>Thông tin &amp; minh chứng</h2><div class="desc">Nhập thông tin cá nhân và nộp minh chứng theo từng tiêu chí.</div></div>
+          </div>
           <div class="quick-cards">
-            <div class="quick-card"><div class="icon">1</div><b>Nhập thông tin</b><span>Họ tên, ngày sinh, khoa, lớp, chức vụ, số điện thoại.</span></div>
-            <div class="quick-card"><div class="icon">2</div><b>Tải minh chứng</b><span>Nhập tên minh chứng rồi chọn file PDF hoặc ảnh.</span></div>
-            <div class="quick-card"><div class="icon">3</div><b>Chờ duyệt</b><span>Hồ sơ khóa sau khi nộp; admin có thể mở thời gian chỉnh sửa.</span></div>
-            <div class="quick-card"><div class="icon">4</div><b>Xem kết quả</b><span>Theo dõi cột Kết quả và Lý do cho từng tiêu chí.</span></div>
+            <div class="quick-card"><div class="icon">1</div><b>Thông tin</b><span>Họ tên, khoa, lớp, liên hệ.</span></div>
+            <div class="quick-card"><div class="icon">2</div><b>Minh chứng</b><span>PDF và ảnh theo tiêu chí.</span></div>
+            <div class="quick-card"><div class="icon">3</div><b>Nộp hồ sơ</b><span>Gửi chờ người chấm duyệt.</span></div>
+            <div class="quick-card"><div class="icon">4</div><b>Kết quả</b><span>Xem đạt / không đạt từng mục.</span></div>
           </div>
           <div class="field-grid">
             <input id="app_schoolYear" type="hidden">
@@ -70,16 +97,16 @@
             <div class="field col-3"><label>Giới tính <span class="req">*</span></label><select id="app_gender"><option value="">Chọn</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option><option value="Khác">Khác</option></select></div>
             <div class="field col-3"><label>Ngày sinh <span class="req">*</span></label><input id="app_birthDate" type="date"></div>
             <div class="field col-3"><label>Dân tộc <span class="req">*</span></label><input id="app_ethnicity" placeholder="VD: Kinh"></div>
-            <div class="field col-3"><label>Sinh viên năm thứ <span class="req">*</span></label><select id="app_yearOfStudy"><option value="">Chọn</option><option value="1">Năm 1</option><option value="2">Năm 2</option><option value="3">Năm 3</option><option value="4">Năm 4</option><option value="5">Khác</option></select></div>
+            <div class="field col-3"><label>Năm thứ <span class="req">*</span></label><select id="app_yearOfStudy"><option value="">Chọn</option><option value="1">Năm 1</option><option value="2">Năm 2</option><option value="3">Năm 3</option><option value="4">Năm 4</option><option value="5">Khác</option></select></div>
             <div class="field col-3"><label>Khoa <span class="req">*</span></label><select id="app_faculty" onchange="onAppFacultyChange()"><option value="">Chọn khoa</option></select></div>
             <div class="field col-3"><label>Lớp <span class="req">*</span></label><select id="app_className" onchange="onAppClassChange()"><option value="">Chọn lớp</option></select></div>
             <div class="field col-3" id="app_classCustomWrap" style="display:none"><label>Lớp (nhập tay) <span class="req">*</span></label><input id="app_classNameCustom" placeholder="VD: 26DTH1"></div>
-            <div class="field col-3"><label>Chức vụ Đoàn, Hội <span class="req">*</span></label><input id="app_unionPosition" placeholder="VD: Đoàn viên / Chi hội trưởng"></div>
+            <div class="field col-3"><label>Chức vụ Đoàn, Hội <span class="req">*</span></label><input id="app_unionPosition" placeholder="Đoàn viên"></div>
             <div class="field col-4"><label>Số điện thoại <span class="req">*</span></label><input id="app_phone" placeholder="09xxxxxxxx"></div>
-            <div class="field col-8"><label>Ghi chú hồ sơ</label><input id="app_studentNote" placeholder="Ghi chú thêm nếu có"></div>
+            <div class="field col-8"><label>Ghi chú</label><input id="app_studentNote" placeholder="Ghi chú thêm"></div>
           </div>
-          <div class="alert info"><b>Quy trình minh chứng:</b> Mỗi tiêu chí có thể nộp tối đa <b>5 file PDF</b> và nhiều <b>ảnh</b> (JPG, PNG...). Nhập tên minh chứng rồi chọn đúng loại file.</div>
-          <div class="form-scroll-note">Bảng tiêu chí có thể kéo ngang trên điện thoại/màn hình nhỏ để xem đầy đủ cột minh chứng.</div>
+          <div class="alert info"><b>Minh chứng:</b> Tối đa <b>5 PDF</b> và nhiều <b>ảnh</b> mỗi tiêu chí.</div>
+          <div class="form-scroll-note">Bảng tiêu chí có thể kéo ngang trên màn hình nhỏ.</div>
           <div id="criteriaContainer"></div>
           <div class="toolbar">
             <button class="btn secondary" id="btnSaveDraft" onclick="saveApplication(false)">Lưu nháp</button>
@@ -88,10 +115,13 @@
           <div id="applicationResult"></div>
         </div>
       </div>
-    </div>
-    <div class="footer">© CLB SV5T · <a href="quan-ly.html">Cổng quản lý</a> · Hệ thống xét Sinh viên 5 tốt</div>
+    </main>
   </div>
+
+  <aside class="dash-aside" id="dashAside"></aside>
 </div>
+
+<div class="org" id="orgText" style="display:none"></div>
 <script src="assets/sv5t.js"></script>
 </body>
 </html>

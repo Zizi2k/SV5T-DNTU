@@ -43,14 +43,24 @@ try {
 
 Write-Host ""
 
-# 3. Mo trinh duyet
-Write-Host "Mo trang web..." -ForegroundColor Cyan
-Start-Process "https://script.google.com/home/projects"
-Start-Sleep -Seconds 1
-if (Test-Path $indexPath) {
-    Start-Process $indexPath
+# 3. Mo trang web local (server + trinh duyet)
+Write-Host "Khoi dong xem web tren may..." -ForegroundColor Cyan
+$port = 5500
+$studentUrl = "http://127.0.0.1:$port/index.html"
+$adminUrl = "http://127.0.0.1:$port/quan-ly.html"
+$listening = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+if (-not $listening) {
+    Start-Process -WindowStyle Minimized cmd.exe -ArgumentList "/c", "cd /d `"$root`" && python -m http.server $port"
+    Start-Sleep -Seconds 2
+    Write-Host "[OK] Da bat server local cong $port" -ForegroundColor Green
+} else {
+    Write-Host "[OK] Server local da chay cong $port" -ForegroundColor Green
 }
-Start-Process "$apiUrl`?action=ping"
+Start-Process $studentUrl
+Start-Sleep -Milliseconds 500
+Start-Process $adminUrl
+Write-Host "  Sinh vien: $studentUrl" -ForegroundColor Cyan
+Write-Host "  Quan ly:   $adminUrl" -ForegroundColor Cyan
 
 Write-Host ""
 Write-Host "Xong! Lam tiep tren tab script.google.com (code da trong clipboard)." -ForegroundColor Green
