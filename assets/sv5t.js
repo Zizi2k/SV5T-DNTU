@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-user-list';
+const APP_BUILD = '20260625-criteria-crud';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -21,7 +21,8 @@ const APP = {
   orgUnits: { faculties: [], classesByFaculty: {}, allowCustomClass: true },
   personalEditing: false,
   applicationEditing: false,
-  reviewAppId: ''
+  reviewAppId: '',
+  adminCriteria: []
 };
 const PERSONAL_FIELD_IDS = ['app_fullName','app_gender','app_birthDate','app_ethnicity','app_yearOfStudy','app_faculty','app_className','app_classNameCustom','app_unionPosition','app_phone','app_studentNote'];
 
@@ -1601,8 +1602,156 @@ async function loadUsers(){
   }
 }
 async function saveUser(){try{await postApi('upsertUser',{token:APP.token,user:{username:u_username.value,passwordRaw:u_password.value,fullName:u_fullName.value,email:u_email.value,role:u_role.value,faculty:u_faculty.value,active:u_active.value==='true'}}); await loadUsers()}catch(e){alert(e.message)}}
-async function loadCriteriaAdmin(){if(APP.user.role!=='ADMIN')return; try{const r=await jsonp('listCriteria',{token:APP.token}); criteriaManageBox.style.display='block'; criteriaManageBox.innerHTML=`<div class="box-title"><div><h2>Quản lý tiêu chí</h2><div class="desc">Admin có thể chỉnh sửa tiêu chí trực tiếp trong Google Sheet CRITERIA hoặc dùng phần này để thêm nhanh.</div></div></div><div class="field-grid"><div class="field col-3"><label>Group ID</label><input id="c_groupId" placeholder="VD: HOC_TAP"></div><div class="field col-3"><label>Tên nhóm</label><input id="c_groupName"></div><div class="field col-6"><label>Nội dung tiêu chí</label><input id="c_label"></div><div class="field col-3"><label>Loại</label><select id="c_itemType"><option value="REQUIRED_EVIDENCE">Tiêu chí bắt buộc có minh chứng</option><option value="OPTION_EVIDENCE">Tiêu chí lựa chọn chỉ cần đạt 01</option><option value="REQUIRED_AUTO">Tự động</option></select></div><div class="field col-3"><label>Rule tự động</label><input id="c_rule" placeholder="GPA_3, NO_F..."></div><div class="field col-3"><label>Thứ tự nhóm</label><input id="c_groupOrder" type="number" value="1"></div><div class="field col-3"><label>Thứ tự tiêu chí</label><input id="c_criterionOrder" type="number" value="1"></div></div><button class="btn primary" style="margin:10px 0" onclick="saveCriterion()">Thêm tiêu chí</button><table><thead><tr><th>Nhóm</th><th>Nội dung</th><th>Loại</th><th>Minh chứng</th><th>Trạng thái</th></tr></thead><tbody>${(r.criteria||[]).map(c=>`<tr><td>${esc(c.groupName)}</td><td>${esc(c.label)}</td><td>${esc(c.itemType)}</td><td>${c.evidenceRequired?'Bắt buộc':''}</td><td>${c.active?badge('PASS'):badge('FAIL')}</td></tr>`).join('')}</tbody></table>`}catch(e){}}
-async function saveCriterion(){try{await postApi('upsertCriterion',{token:APP.token,criterion:{groupId:c_groupId.value,groupName:c_groupName.value,label:c_label.value,itemType:c_itemType.value,rule:c_rule.value,groupOrder:c_groupOrder.value,criterionOrder:c_criterionOrder.value,minOptionPass:1,active:true}}); await loadCriteriaAdmin(); await testApi()}catch(e){alert(e.message)}}
+function criterionTypeLabel(t){
+  if(t==='REQUIRED_EVIDENCE') return 'Bắt buộc có MC';
+  if(t==='OPTION_EVIDENCE') return 'Lựa chọn (đạt 01)';
+  if(t==='REQUIRED_AUTO') return 'Tự động';
+  return t||'';
+}
+function resetCriterionForm(){
+  const idEl=document.getElementById('c_criterionId');
+  if(idEl) idEl.value='';
+  const fields={
+    c_groupId:'',c_groupName:'',c_label:'',c_rule:'',
+    c_groupOrder:'1',c_criterionOrder:'1'
+  };
+  Object.keys(fields).forEach(k=>{ const el=document.getElementById(k); if(el) el.value=fields[k]; });
+  const typeEl=document.getElementById('c_itemType');
+  if(typeEl) typeEl.value='REQUIRED_EVIDENCE';
+  const activeEl=document.getElementById('c_active');
+  if(activeEl) activeEl.value='true';
+  const btn=document.getElementById('btnSaveCriterion');
+  if(btn) btn.textContent='Thêm tiêu chí';
+  const cancel=document.getElementById('btnCancelCriterion');
+  if(cancel) cancel.style.display='none';
+}
+function editCriterion(criterionId){
+  const c=(APP.adminCriteria||[]).find(x=>x.criterionId===criterionId);
+  if(!c) return;
+  const idEl=document.getElementById('c_criterionId');
+  if(idEl) idEl.value=c.criterionId||'';
+  c_groupId.value=c.groupId||'';
+  c_groupName.value=c.groupName||'';
+  c_label.value=c.label||'';
+  c_itemType.value=c.itemType||'REQUIRED_EVIDENCE';
+  c_rule.value=c.rule||'';
+  c_groupOrder.value=c.groupOrder||1;
+  c_criterionOrder.value=c.criterionOrder||1;
+  c_active.value=c.active===false?'false':'true';
+  const btn=document.getElementById('btnSaveCriterion');
+  if(btn) btn.textContent='Lưu thay đổi';
+  const cancel=document.getElementById('btnCancelCriterion');
+  if(cancel) cancel.style.display='inline-flex';
+  document.querySelector('.criterion-form-panel')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderCriterionRow(c){
+  return `<tr>
+    <td data-label="Nhóm" class="crit-col-group">
+      <span class="crit-group-name">${esc(c.groupName)}</span>
+      <span class="muted crit-group-id">${esc(c.groupId)} · #${esc(c.groupOrder)}</span>
+    </td>
+    <td data-label="Nội dung" class="crit-col-label">${esc(c.label)}</td>
+    <td data-label="Loại" class="crit-col-type">${esc(criterionTypeLabel(c.itemType))}</td>
+    <td data-label="Minh chứng" class="crit-col-ev">${c.evidenceRequired?'<span class="pill blue">Bắt buộc</span>':'<span class="pill">Không</span>'}</td>
+    <td data-label="Trạng thái" class="crit-col-status">${c.active?'<span class="pill ok">Đang dùng</span>':'<span class="pill bad">Đã ẩn</span>'}</td>
+    <td data-label="Thao tác" class="crit-col-actions">
+      <div class="account-actions crit-row-actions">
+        <button type="button" class="btn secondary small" onclick="editCriterion('${esc(c.criterionId)}')">Sửa</button>
+        <button type="button" class="btn ${c.active?'warn':'ok'} small" onclick="toggleCriterionActive('${esc(c.criterionId)}',${!c.active})">${c.active?'Ẩn':'Bật'}</button>
+        <button type="button" class="btn bad small" onclick="deleteCriterion('${esc(c.criterionId)}')">Xóa</button>
+      </div>
+    </td>
+  </tr>`;
+}
+async function loadCriteriaAdmin(){
+  if(APP.user.role!=='ADMIN') return;
+  try{
+    const r=await jsonp('listCriteria',{token:APP.token});
+    APP.adminCriteria=r.criteria||[];
+    criteriaManageBox.style.display='block';
+    const criteria=APP.adminCriteria;
+    criteriaManageBox.innerHTML=`
+      <div class="box-title">
+        <div>
+          <h2>Quản lý tiêu chí</h2>
+          <div class="desc">Thêm, sửa, ẩn hoặc xóa tiêu chí. Xóa tiêu chí sẽ xóa luôn minh chứng và kết quả chấm liên quan.</div>
+        </div>
+      </div>
+      <div class="criterion-form-panel user-form-panel">
+        <h3 class="user-form-title">Thêm / sửa tiêu chí</h3>
+        <input type="hidden" id="c_criterionId" value="">
+        <div class="field-grid user-form-grid">
+          <div class="field col-3"><label>Group ID</label><input id="c_groupId" placeholder="VD: HOC_TAP"></div>
+          <div class="field col-3"><label>Tên nhóm</label><input id="c_groupName" placeholder="VD: 1. Học tập"></div>
+          <div class="field col-6"><label>Nội dung tiêu chí</label><input id="c_label" placeholder="Nội dung tiêu chí"></div>
+          <div class="field col-3"><label>Loại</label><select id="c_itemType"><option value="REQUIRED_EVIDENCE">Tiêu chí bắt buộc có minh chứng</option><option value="OPTION_EVIDENCE">Tiêu chí lựa chọn chỉ cần đạt 01</option><option value="REQUIRED_AUTO">Tự động</option></select></div>
+          <div class="field col-3"><label>Rule tự động</label><input id="c_rule" placeholder="GPA_3, NO_F..."></div>
+          <div class="field col-3"><label>Thứ tự nhóm</label><input id="c_groupOrder" type="number" value="1"></div>
+          <div class="field col-3"><label>Thứ tự tiêu chí</label><input id="c_criterionOrder" type="number" value="1"></div>
+          <div class="field col-3"><label>Trạng thái</label><select id="c_active"><option value="true">Đang dùng</option><option value="false">Ẩn</option></select></div>
+        </div>
+        <div class="user-form-actions">
+          <button type="button" class="btn primary" id="btnSaveCriterion" onclick="saveCriterion()">Thêm tiêu chí</button>
+          <button type="button" class="btn secondary" id="btnCancelCriterion" style="display:none" onclick="resetCriterionForm()">Hủy sửa</button>
+        </div>
+      </div>
+      <div class="user-list-head">
+        <h3>Danh sách tiêu chí</h3>
+        <span class="user-list-count">${criteria.length} tiêu chí</span>
+      </div>
+      ${criteria.length
+        ? `<div class="table-scroll crit-list-scroll"><table class="crit-list-table"><thead><tr>
+            <th>Nhóm</th><th>Nội dung</th><th>Loại</th><th>Minh chứng</th><th>Trạng thái</th><th>Thao tác</th>
+          </tr></thead><tbody>${criteria.map(renderCriterionRow).join('')}</tbody></table></div>`
+        : '<div class="alert warn">Chưa có tiêu chí nào.</div>'}`;
+  }catch(e){
+    criteriaManageBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>';
+  }
+}
+async function saveCriterion(){
+  try{
+    const criterionId=(document.getElementById('c_criterionId')?.value||'').trim();
+    await postApi('upsertCriterion',{
+      token:APP.token,
+      criterion:{
+        criterionId: criterionId || undefined,
+        groupId:c_groupId.value,
+        groupName:c_groupName.value,
+        label:c_label.value,
+        itemType:c_itemType.value,
+        rule:c_rule.value,
+        groupOrder:c_groupOrder.value,
+        criterionOrder:c_criterionOrder.value,
+        minOptionPass:1,
+        active:c_active.value==='true'
+      }
+    });
+    resetCriterionForm();
+    await loadCriteriaAdmin();
+    await testApi();
+    alert('Đã lưu tiêu chí.');
+  }catch(e){alert(e.message)}
+}
+async function toggleCriterionActive(criterionId, active){
+  if(!confirm((active?'Bật':'Ẩn')+' tiêu chí này?')) return;
+  try{
+    await postApi('toggleCriterion',{token:APP.token,criterionId,active});
+    await loadCriteriaAdmin();
+    await testApi();
+  }catch(e){alert(e.message)}
+}
+async function deleteCriterion(criterionId){
+  if(!confirm('Xóa tiêu chí này? Minh chứng và kết quả chấm liên quan cũng sẽ bị xóa.')) return;
+  try{
+    showLoading(true);
+    await postApi('deleteCriterion',{token:APP.token,criterionId});
+    if((document.getElementById('c_criterionId')?.value||'')===criterionId) resetCriterionForm();
+    await loadCriteriaAdmin();
+    await testApi();
+    alert('Đã xóa tiêu chí.');
+  }catch(e){alert(e.message)}
+  finally{showLoading(false)}
+}
 
 window.addEventListener('load', init);
 window.addEventListener('resize', ()=>{ if(window.innerWidth > 1024) closeDashSidebar(); });

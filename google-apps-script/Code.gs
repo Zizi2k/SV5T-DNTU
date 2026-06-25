@@ -224,6 +224,8 @@ function routePost_(action, payload) {
       return apiUpsertCriterion_(payload.token, payload.criterion);
     case 'toggleCriterion':
       return apiToggleCriterion_(payload.token, payload.criterionId, payload.active);
+    case 'deleteCriterion':
+      return apiDeleteCriterion_(payload.token, payload.criterionId);
     case 'updateConfig':
       return apiUpdateConfig_(payload.token, payload.key, payload.value, payload.note);
     case 'updateStudentEditConfig':
@@ -1414,7 +1416,7 @@ function apiUpsertCriterion_(token, payload) {
   }
 
   const rows = readObjects_(SV5T.SHEETS.CRITERIA);
-  const existed = rows.find(function (c) { return c.criterionId === criterionId; });
+  const existed = rows.find(function (c) { return String(c.criterionId) === String(criterionId); });
   const obj = {
     criterionId: criterionId,
     groupId: clean_(payload.groupId),
@@ -1449,6 +1451,40 @@ function apiToggleCriterion_(token, criterionId, active) {
   });
   audit_(actor, 'TOGGLE_CRITERION', 'CRITERION', criterionId, { active: active });
   return ok_({ message: 'Đã cập nhật trạng thái tiêu chí.' });
+}
+
+function apiDeleteCriterion_(token, criterionId) {
+  const actor = requireRole_(token, [SV5T.ROLE.ADMIN]);
+  criterionId = clean_(criterionId);
+  if (!criterionId) throw new Error('Thiếu mã tiêu chí.');
+
+  const criterion = readObjects_(SV5T.SHEETS.CRITERIA).find(function (c) {
+    return String(c.criterionId) === criterionId;
+  });
+  if (!criterion) throw new Error('Không tìm thấy tiêu chí.');
+
+  const evidences = readObjects_(SV5T.SHEETS.EVIDENCES).filter(function (e) {
+    return String(e.criterionId) === criterionId;
+  });
+  evidences.forEach(function (ev) {
+    try {
+      if (ev.fileId) DriveApp.getFileById(String(ev.fileId)).setTrashed(true);
+    } catch (err) {}
+  });
+
+  deleteRowsWhere_(SV5T.SHEETS.EVIDENCES, function (r) { return String(r.criterionId) === criterionId; });
+  deleteRowsWhere_(SV5T.SHEETS.CLAIMS, function (r) { return String(r.criterionId) === criterionId; });
+  deleteRowsWhere_(SV5T.SHEETS.REVIEWS, function (r) { return String(r.criterionId) === criterionId; });
+  deleteRowsWhere_(SV5T.SHEETS.CRITERIA, function (r) { return String(r.criterionId) === criterionId; });
+
+  audit_(actor, 'DELETE_CRITERION', 'CRITERION', criterionId, {
+    label: criterion.label,
+    deletedEvidences: evidences.length
+  });
+  return ok_({
+    message: 'Đã xóa tiêu chí và dữ liệu minh chứng/đánh giá liên quan.',
+    criterionId: criterionId
+  });
 }
 
 function apiUpdateConfig_(token, key, value, note) {
