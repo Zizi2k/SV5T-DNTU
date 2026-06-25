@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-avatar';
+const APP_BUILD = '20260625-profile-actions';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -186,18 +186,27 @@ function renderAvatarBlock(u){
     <span class="dash-avatar-edit" aria-hidden="true">📷</span>
   </label>`;
 }
+function renderProfileActions(){
+  return `<div class="dash-profile-actions">
+    <button type="button" class="btn secondary small" onclick="changeMyPassword()">Đổi mật khẩu</button>
+    <button type="button" class="btn secondary small" onclick="logout()">Đăng xuất</button>
+  </div>`;
+}
 function renderDashProfileCard(u, opts={}){
   const name = profileDisplayName(u);
   const loginId = (u.username||u.email||'').trim();
   const hint = opts.showHint ? '<span class="dash-avatar-hint">Nhấn ảnh để đổi</span>' : '';
-  return `<div class="dash-profile">
-    ${renderAvatarBlock(u)}
-    <div class="dash-profile-meta">
-      <b title="${esc(name)}">${esc(name)}</b>
-      ${loginId && loginId.toLowerCase()!==name.toLowerCase() ? `<span class="dash-profile-email" title="${esc(loginId)}">${esc(loginId)}</span>` : ''}
-      <span class="dash-profile-role">${esc(profileRoleLabel(u))}</span>
-      ${hint}
+  return `<div class="dash-profile-block">
+    <div class="dash-profile">
+      ${renderAvatarBlock(u)}
+      <div class="dash-profile-meta">
+        <b title="${esc(name)}">${esc(name)}</b>
+        ${loginId && loginId.toLowerCase()!==name.toLowerCase() ? `<span class="dash-profile-email" title="${esc(loginId)}">${esc(loginId)}</span>` : ''}
+        <span class="dash-profile-role">${esc(profileRoleLabel(u))}</span>
+        ${hint}
+      </div>
     </div>
+    ${renderProfileActions()}
   </div>`;
 }
 async function uploadAvatar(input){

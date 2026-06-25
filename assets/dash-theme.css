@@ -218,11 +218,23 @@ body.dash-body .shell{background:transparent;border:0;box-shadow:none;overflow:v
   background:var(--dash-bg);
   position:sticky;top:0;height:100vh;overflow-y:auto;
 }
-.dash-profile{
+.dash-profile-block{
   background:var(--dash-card);border-radius:var(--dash-radius);
   padding:18px;box-shadow:var(--dash-shadow);border:1px solid var(--dash-line);
-  display:flex;align-items:center;gap:14px;margin-bottom:20px;
+  margin-bottom:20px;min-width:0;overflow:hidden;
+}
+.dash-profile{
+  display:flex;align-items:center;gap:14px;
   min-width:0;overflow:hidden;
+  margin-bottom:0;
+  background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;
+}
+.dash-profile-actions{
+  display:flex;gap:8px;margin-top:14px;padding-top:14px;
+  border-top:1px solid var(--dash-line);
+}
+.dash-profile-actions .btn{
+  flex:1;min-height:36px;font-size:12px;padding:8px 10px;
 }
 .dash-profile-meta{
   min-width:0;flex:1;overflow:hidden;
@@ -255,7 +267,7 @@ body.dash-body .shell{background:transparent;border:0;box-shadow:none;overflow:v
   display:block;margin-top:6px;font-size:11px;font-weight:600;color:var(--dash-primary);
 }
 .dash-sidebar-profile{margin-bottom:16px}
-.dash-sidebar-profile .dash-profile{margin-bottom:0}
+.dash-sidebar-profile .dash-profile-block{margin-bottom:0}
 .student-dash-profile{display:none;margin-bottom:16px}
 .dash-avatar-edit{
   position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;
