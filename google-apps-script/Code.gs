@@ -222,6 +222,12 @@ function routePost_(action, payload) {
       return apiToggleCriterion_(payload.token, payload.criterionId, payload.active);
     case 'updateConfig':
       return apiUpdateConfig_(payload.token, payload.key, payload.value, payload.note);
+    case 'updateStudentEditConfig':
+      return apiUpdateStudentEditConfig_(payload.token, payload);
+    case 'studentDeleteEvidence':
+      return apiStudentDeleteEvidence_(payload.token, payload.evidenceId);
+    case 'studentUpdateEvidenceTitle':
+      return apiStudentUpdateEvidenceTitle_(payload.token, payload.evidenceId, payload.evidenceTitle);
     default:
       throw new Error('Action POST không hợp lệ: ' + action);
   }
@@ -356,6 +362,8 @@ function seedConfig_() {
     { key: 'SCHOOL_YEAR', value: '2025-2026', note: 'Năm học mặc định', updatedAt: new Date() },
     { key: 'ALLOW_REGISTER', value: 'TRUE', note: 'TRUE: cho phép sinh viên đăng ký tài khoản', updatedAt: new Date() },
     { key: 'ALLOW_SUBMIT', value: 'TRUE', note: 'TRUE: cho phép nộp/bổ sung hồ sơ', updatedAt: new Date() },
+    { key: 'ALLOW_STUDENT_EDIT', value: 'FALSE', note: 'TRUE: sinh viên được sửa minh chứng đã nộp trong thời hạn', updatedAt: new Date() },
+    { key: 'STUDENT_EDIT_UNTIL', value: '', note: 'Hạn chỉnh sửa (yyyy-MM-dd HH:mm). Trống = không giới hạn khi bật ALLOW_STUDENT_EDIT', updatedAt: new Date() },
     { key: 'MAX_FILE_MB', value: '8', note: 'Giới hạn dung lượng mỗi file minh chứng', updatedAt: new Date() },
     { key: 'MAX_PDF_PER_CRITERION', value: '5', note: 'Tối đa PDF mỗi tiêu chí', updatedAt: new Date() },
     { key: 'MAX_IMAGE_PER_CRITERION', value: '30', note: 'Tối đa ảnh mỗi tiêu chí', updatedAt: new Date() },
@@ -473,6 +481,9 @@ function apiBootstrap_() {
     schoolYear: getConfig_('SCHOOL_YEAR', '2025-2026'),
     allowRegister: getConfigBool_('ALLOW_REGISTER', true),
     allowSubmit: getConfigBool_('ALLOW_SUBMIT', true),
+    allowStudentEdit: getConfigBool_('ALLOW_STUDENT_EDIT', false),
+    studentEditUntil: getConfig_('STUDENT_EDIT_UNTIL', ''),
+    studentEditWindow: getStudentEditWindow_(),
     maxFileMb: Number(getConfig_('MAX_FILE_MB', '8')),
     maxPdfPerCriterion: Number(getConfig_('MAX_PDF_PER_CRITERION', '5')),
     maxImagePerCriterion: Number(getConfig_('MAX_IMAGE_PER_CRITERION', '30')),
@@ -624,7 +635,10 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
     throw new Error('Hồ sơ đã chốt kết quả, không thể cập nhật.');
   }
   if (app && String(app.status) === SV5T.APP_STATUS.SUBMITTED) {
-    throw new Error('Hồ sơ đã nộp và đang chờ duyệt. Chỉ được bổ sung khi người chấm yêu cầu.');
+    if (submitNow) throw new Error('Hồ sơ đã nộp, không thể nộp lại.');
+    if (!getStudentEditWindow_().open) {
+      throw new Error('Hồ sơ đã nộp và đang chờ duyệt. Chỉ được sửa minh chứng trong thời gian admin cho phép.');
+    }
   }
   if (app && String(app.status) === SV5T.APP_STATUS.NEED_SUPPLEMENT) {
     throw new Error('Hồ sơ đang cần bổ sung. Vui lòng dùng chức năng Gửi bổ sung minh chứng.');
@@ -708,12 +722,13 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
   const compute = computeApplication_(getApplication_(app.applicationId));
   saveComputed_(app.applicationId, compute);
 
-  audit_(user, submitNow ? 'STUDENT_SUBMIT_APPLICATION' : 'STUDENT_SAVE_APPLICATION', 'APPLICATION', app.applicationId, {
+  const wasSubmittedEdit = app && String(app.status) === SV5T.APP_STATUS.SUBMITTED && !submitNow;
+  audit_(user, submitNow ? 'STUDENT_SUBMIT_APPLICATION' : (wasSubmittedEdit ? 'STUDENT_UPDATE_EVIDENCE' : 'STUDENT_SAVE_APPLICATION'), 'APPLICATION', app.applicationId, {
     fileCount: files.length
   });
 
   return ok_({
-    message: submitNow ? 'Đã nộp hồ sơ thành công.' : 'Đã lưu hồ sơ nháp.',
+    message: submitNow ? 'Đã nộp hồ sơ thành công.' : (wasSubmittedEdit ? 'Đã lưu thay đổi minh chứng.' : 'Đã lưu hồ sơ nháp.'),
     applicationId: app.applicationId,
     status: submitNow ? SV5T.APP_STATUS.SUBMITTED : app.status,
     summary: compute.summary
@@ -786,6 +801,78 @@ function apiStudentSupplement_(token, claims, files) {
     status: SV5T.APP_STATUS.SUBMITTED,
     summary: compute.summary
   });
+}
+
+function apiStudentDeleteEvidence_(token, evidenceId) {
+  const user = requireRole_(token, [SV5T.ROLE.STUDENT, SV5T.ROLE.ADMIN]);
+  evidenceId = clean_(evidenceId);
+  if (!evidenceId) throw new Error('Thiếu mã minh chứng.');
+
+  const app = findMyApplication_(user);
+  if (!app) throw new Error('Bạn chưa có hồ sơ.');
+  if (String(app.status) === SV5T.APP_STATUS.FINALIZED) throw new Error('Hồ sơ đã chốt kết quả, không thể xóa minh chứng.');
+
+  const ev = readObjects_(SV5T.SHEETS.EVIDENCES).find(function (e) {
+    return String(e.evidenceId) === evidenceId && String(e.applicationId) === String(app.applicationId);
+  });
+  if (!ev) throw new Error('Không tìm thấy minh chứng.');
+
+  const reviewMap = getClubReviewStatusMap_(app.applicationId);
+  if (user.role !== SV5T.ROLE.ADMIN && !canStudentManageEvidence_(app, ev.criterionId, reviewMap[ev.criterionId])) {
+    throw new Error('Không được phép xóa minh chứng lúc này.');
+  }
+
+  try {
+    if (ev.fileId) DriveApp.getFileById(String(ev.fileId)).setTrashed(true);
+  } catch (err) {}
+
+  deleteRowsWhere_(SV5T.SHEETS.EVIDENCES, function (r) { return String(r.evidenceId) === evidenceId; });
+
+  const compute = computeApplication_(getApplication_(app.applicationId));
+  saveComputed_(app.applicationId, compute);
+  audit_(user, 'STUDENT_DELETE_EVIDENCE', 'EVIDENCE', evidenceId, { criterionId: ev.criterionId, fileName: ev.fileName });
+  return ok_({ message: 'Đã xóa minh chứng.', summary: compute.summary });
+}
+
+function apiStudentUpdateEvidenceTitle_(token, evidenceId, evidenceTitle) {
+  const user = requireRole_(token, [SV5T.ROLE.STUDENT, SV5T.ROLE.ADMIN]);
+  evidenceId = clean_(evidenceId);
+  evidenceTitle = clean_(evidenceTitle);
+  if (!evidenceId) throw new Error('Thiếu mã minh chứng.');
+  if (!evidenceTitle) throw new Error('Vui lòng nhập tên minh chứng.');
+
+  const app = findMyApplication_(user);
+  if (!app) throw new Error('Bạn chưa có hồ sơ.');
+  if (String(app.status) === SV5T.APP_STATUS.FINALIZED) throw new Error('Hồ sơ đã chốt kết quả, không thể sửa minh chứng.');
+
+  const ev = readObjects_(SV5T.SHEETS.EVIDENCES).find(function (e) {
+    return String(e.evidenceId) === evidenceId && String(e.applicationId) === String(app.applicationId);
+  });
+  if (!ev) throw new Error('Không tìm thấy minh chứng.');
+
+  const reviewMap = getClubReviewStatusMap_(app.applicationId);
+  if (user.role !== SV5T.ROLE.ADMIN && !canStudentManageEvidence_(app, ev.criterionId, reviewMap[ev.criterionId])) {
+    throw new Error('Không được phép sửa minh chứng lúc này.');
+  }
+
+  updateRowFields_(SV5T.SHEETS.EVIDENCES, ev._row, { evidenceTitle: evidenceTitle });
+  audit_(user, 'STUDENT_UPDATE_EVIDENCE_TITLE', 'EVIDENCE', evidenceId, { evidenceTitle: evidenceTitle });
+  return ok_({ message: 'Đã cập nhật tên minh chứng.' });
+}
+
+function apiUpdateStudentEditConfig_(token, payload) {
+  const actor = requireRole_(token, [SV5T.ROLE.ADMIN]);
+  payload = payload || {};
+  const allow = bool_(payload.allowStudentEdit);
+  const until = clean_(payload.studentEditUntil);
+  if (until) {
+    const parsed = parseConfigDate_(until);
+    if (!parsed) throw new Error('Hạn chỉnh sửa không hợp lệ. Dùng định dạng yyyy-MM-dd HH:mm hoặc chọn từ lịch.');
+  }
+  setConfig_('ALLOW_STUDENT_EDIT', allow ? 'TRUE' : 'FALSE', 'TRUE: sinh viên được sửa minh chứng đã nộp trong thời hạn');
+  setConfig_('STUDENT_EDIT_UNTIL', until, 'Hạn chỉnh sửa minh chứng sinh viên');
+  audit_(actor, 'UPDATE_STUDENT_EDIT_CONFIG', 'CONFIG', 'STUDENT_EDIT', { allowStudentEdit: allow, studentEditUntil: until });
+  return ok_({ message: 'Đã cập nhật cấu hình thời gian chỉnh sửa minh chứng.', studentEditWindow: getStudentEditWindow_() });
 }
 
 function validateSubmission_(applicationId) {
@@ -1549,7 +1636,8 @@ function applicationPayload_(app, user, includeSensitive) {
     groupedCriteria: groupCriteria_(getCriteria_()),
     summary: compute.summary,
     groups: compute.groups,
-    canSupplement: String(app.status) !== SV5T.APP_STATUS.FINALIZED
+    canSupplement: String(app.status) !== SV5T.APP_STATUS.FINALIZED,
+    editWindow: getStudentEditWindow_()
   };
 }
 
@@ -1609,6 +1697,7 @@ function uploadEvidenceFiles_(app, user, files) {
   const shareByLink = getConfigBool_('SHARE_EVIDENCE_BY_LINK', true);
   const folder = DriveApp.getFolderById(app.driveFolderId);
   const rows = [];
+  const reviewMap = getClubReviewStatusMap_(app.applicationId);
 
   const existing = readObjects_(SV5T.SHEETS.EVIDENCES).filter(function (e) {
     return e.applicationId === app.applicationId;
@@ -1646,6 +1735,9 @@ function uploadEvidenceFiles_(app, user, files) {
     const criterionId = clean_(f.criterionId);
     const criterion = criteriaById[criterionId];
     if (!criterion) throw new Error('Không tìm thấy tiêu chí: ' + criterionId);
+    if (user.role !== SV5T.ROLE.ADMIN && !canStudentManageEvidence_(app, criterionId, reviewMap[criterionId])) {
+      throw new Error('Không được phép thêm minh chứng cho tiêu chí này lúc này.');
+    }
 
     const evidenceTitle = clean_(f.evidenceTitle);
     if (!evidenceTitle) throw new Error('Vui lòng nhập tên minh chứng cho từng file.');
@@ -1795,6 +1887,70 @@ function setConfig_(key, value, note) {
   const obj = { key: key, value: String(value), note: note || '', updatedAt: new Date() };
   if (row) updateRowFields_(SV5T.SHEETS.CONFIG, row._row, obj);
   else appendObjects_(SV5T.SHEETS.CONFIG, [obj]);
+}
+
+function parseConfigDate_(str) {
+  str = clean_(str);
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 23), Number(m[5] || 59), Number(m[6] || 59));
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function getStudentEditWindow_() {
+  ensureStudentEditConfigKeys_();
+  const allowed = getConfigBool_('ALLOW_STUDENT_EDIT', false);
+  const untilStr = clean_(getConfig_('STUDENT_EDIT_UNTIL', ''));
+  let until = null;
+  let open = allowed;
+  if (allowed && untilStr) {
+    until = parseConfigDate_(untilStr);
+    open = !!(until && new Date().getTime() <= until.getTime());
+  }
+  return {
+    allowed: allowed,
+    until: until ? until.toISOString() : '',
+    untilDisplay: until ? Utilities.formatDate(until, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : (untilStr || ''),
+    open: open
+  };
+}
+
+function ensureStudentEditConfigKeys_() {
+  const rows = readObjects_(SV5T.SHEETS.CONFIG);
+  const keys = rows.map(function (r) { return String(r.key).trim(); });
+  if (keys.indexOf('ALLOW_STUDENT_EDIT') === -1) {
+    setConfig_('ALLOW_STUDENT_EDIT', 'FALSE', 'TRUE: sinh viên được sửa minh chứng đã nộp trong thời hạn');
+  }
+  if (keys.indexOf('STUDENT_EDIT_UNTIL') === -1) {
+    setConfig_('STUDENT_EDIT_UNTIL', '', 'Hạn chỉnh sửa (yyyy-MM-dd HH:mm). Trống = không giới hạn khi bật ALLOW_STUDENT_EDIT');
+  }
+}
+
+function getClubReviewStatusMap_(applicationId) {
+  const map = {};
+  readObjects_(SV5T.SHEETS.REVIEWS).forEach(function (r) {
+    if (String(r.applicationId) === String(applicationId) && normalizeReviewLevel_(r.reviewLevel) === SV5T.REVIEW_LEVEL.CLUB) {
+      map[r.criterionId] = { status: r.status, reviewComment: r.comment };
+    }
+  });
+  return map;
+}
+
+function canStudentManageEvidence_(app, criterionId, reviewStatus) {
+  if (!app) return true;
+  const status = String(app.status || '');
+  if (status === SV5T.APP_STATUS.FINALIZED) return false;
+  if (status === SV5T.APP_STATUS.DRAFT) return true;
+  if (status === SV5T.APP_STATUS.NEED_SUPPLEMENT) {
+    return !!(reviewStatus && (reviewStatus.status === SV5T.REVIEW.FAIL || reviewStatus.status === SV5T.REVIEW.NEED_MORE));
+  }
+  if (status === SV5T.APP_STATUS.SUBMITTED) return getStudentEditWindow_().open;
+  return false;
 }
 
 /***********************
@@ -2026,7 +2182,14 @@ function capNhatCauHinhMinhChung_SV5T() {
   ensureSetup_();
   setConfig_('MAX_PDF_PER_CRITERION', '5', 'Tối đa PDF mỗi tiêu chí');
   setConfig_('MAX_IMAGE_PER_CRITERION', '30', 'Tối đa ảnh mỗi tiêu chí');
+  ensureStudentEditConfigKeys_();
   return { ok: true, message: 'Đã cập nhật cấu hình minh chứng PDF/ảnh.' };
+}
+
+function capNhatCauHinhChinhSua_SV5T() {
+  ensureSetup_();
+  ensureStudentEditConfigKeys_();
+  return { ok: true, message: 'Đã thêm cấu hình thời gian chỉnh sửa minh chứng sinh viên (ALLOW_STUDENT_EDIT, STUDENT_EDIT_UNTIL).' };
 }
 
 function capNhatTenDonVi_CLB_SV5T() {

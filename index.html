@@ -479,7 +479,7 @@
             <div class="quick-cards">
               <div class="quick-card"><div class="icon">1</div><b>Nhập thông tin</b><span>Họ tên, ngày sinh, lớp, chức vụ, số điện thoại.</span></div>
               <div class="quick-card"><div class="icon">2</div><b>Tải minh chứng</b><span>Nhập tên minh chứng rồi chọn file tương ứng.</span></div>
-              <div class="quick-card"><div class="icon">3</div><b>Chờ duyệt</b><span>Hồ sơ sẽ khóa khi đã nộp, chỉ mở khi cần bổ sung.</span></div>
+              <div class="quick-card"><div class="icon">3</div><b>Chờ duyệt</b><span>Hồ sơ khóa sau khi nộp; admin có thể mở thời gian chỉnh sửa minh chứng.</span></div>
               <div class="quick-card"><div class="icon">4</div><b>Xem kết quả</b><span>Theo dõi cột Kết quả và Lý do cho từng tiêu chí.</span></div>
             </div>
             <div class="field-grid">
@@ -549,7 +549,7 @@
 <script>
 // Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-evidence-levels';
+const APP_BUILD = '20260625-student-edit';
 
 let API_URL = DEFAULT_API_URL;
 try {
@@ -564,7 +564,8 @@ try {
 const APP = {
   token: localStorage.getItem('SV5T_TOKEN') || '',
   user: JSON.parse(localStorage.getItem('SV5T_USER') || 'null'),
-  criteria: [], groupedCriteria: [], myApp: null, maxFileMb: 8, maxPdfPerCriterion: 5, maxImagePerCriterion: 30
+  criteria: [], groupedCriteria: [], myApp: null, maxFileMb: 8, maxPdfPerCriterion: 5, maxImagePerCriterion: 30,
+  allowStudentEdit: false, studentEditUntil: '', studentEditWindow: { open: false, untilDisplay: '' }
 };
 
 
@@ -644,6 +645,9 @@ async function testApi(){
     APP.criteria=res.criteria||[]; APP.groupedCriteria=res.groupedCriteria||[]; APP.maxFileMb=Number(res.maxFileMb||8);
     APP.maxPdfPerCriterion=Number(res.maxPdfPerCriterion||5);
     APP.maxImagePerCriterion=Number(res.maxImagePerCriterion||30);
+    APP.allowStudentEdit=!!res.allowStudentEdit;
+    APP.studentEditUntil=res.studentEditUntil||'';
+    APP.studentEditWindow=res.studentEditWindow||{open:false,untilDisplay:''};
     applyBrandingFromApi(res);
     renderCriteriaTable();
     const box=document.getElementById('apiStatusBox'); if(box){box.style.display='none';box.innerHTML='';}
@@ -707,7 +711,7 @@ async function loadMyApplication(){
     app_schoolYear.value=(res.application&&res.application.schoolYear)||'';
     if(!app_schoolYear.value){ const bs=await jsonp('bootstrap'); app_schoolYear.value=bs.schoolYear||'2025-2026'; }
     renderCriteriaTable(res);
-    if(res.application){ fillApplication(res); renderWorkflow(res.application.status); updateStudentActionButtons(res.application.status); studentStatus.innerHTML=renderStudentStatus(res); }
+    if(res.application){ fillApplication(res); renderWorkflow(res.application.status); updateStudentActionButtons(res.application.status); studentStatus.innerHTML=renderStudentStatus(res); if(res.editWindow) APP.studentEditWindow=res.editWindow; }
     else { renderWorkflow('DRAFT'); updateStudentActionButtons('DRAFT'); studentStatus.innerHTML='<div class="alert warn">Bạn chưa có hồ sơ. Vui lòng nhập thông tin và nộp hồ sơ.</div>'; }
   }catch(err){studentStatus.innerHTML='<div class="alert bad">'+esc(err.message)+'</div>'}
   finally{showLoading(false)}
@@ -719,13 +723,21 @@ function updateStudentActionButtons(status){
   saveBtn.style.display = 'inline-flex';
   submitBtn.style.display = 'inline-flex';
   submitBtn.textContent = 'Nộp hồ sơ';
+  saveBtn.textContent = 'Lưu nháp';
   saveBtn.disabled = false;
   submitBtn.disabled = false;
 
   if(status === 'SUBMITTED'){
-    saveBtn.disabled = true;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Đang chờ duyệt';
+    if(isStudentEditWindowOpen()){
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Lưu minh chứng';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Đã nộp — đang chờ duyệt';
+    }else{
+      saveBtn.disabled = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Đang chờ duyệt';
+    }
   }else if(status === 'NEED_SUPPLEMENT'){
     saveBtn.style.display = 'none';
     submitBtn.textContent = 'Gửi bổ sung minh chứng';
@@ -738,7 +750,14 @@ function updateStudentActionButtons(status){
 
 function renderStudentStatus(res){
   const a = res.application || {};
-  if(a.status === 'SUBMITTED') return '<div class="alert info"><b>Hồ sơ đã nộp và đang chờ duyệt.</b> Bạn chưa cần thao tác thêm. Khi người chấm yêu cầu bổ sung, hệ thống sẽ mở lại đúng tiêu chí cần bổ sung.</div>';
+  const ew = APP.studentEditWindow || {};
+  if(a.status === 'SUBMITTED'){
+    if(isStudentEditWindowOpen()){
+      const until = ew.untilDisplay ? (' Hạn chỉnh sửa: <b>'+esc(ew.untilDisplay)+'</b>.') : ' Không giới hạn thời gian cho đến khi admin tắt.';
+      return '<div class="alert warn"><b>Admin đang mở thời gian chỉnh sửa minh chứng.</b> Bạn có thể thêm, xóa PDF/ảnh theo từng tiêu chí.'+until+' Nhấn <b>Lưu minh chứng</b> sau khi thay đổi.</div>';
+    }
+    return '<div class="alert info"><b>Hồ sơ đã nộp và đang chờ duyệt.</b> Bạn chưa cần thao tác thêm. Khi người chấm yêu cầu bổ sung, hệ thống sẽ mở lại đúng tiêu chí cần bổ sung.</div>';
+  }
   if(a.status === 'NEED_SUPPLEMENT') return '<div class="alert warn"><b>Hồ sơ cần bổ sung minh chứng.</b> Vui lòng xem cột <b>Kết quả</b> và <b>Lý do</b>, sau đó chỉ bổ sung minh chứng cho các tiêu chí bị Không đạt hoặc Cần bổ sung.</div>';
   if(a.status === 'FINALIZED') return '<div class="alert ok"><b>Hồ sơ đã chốt kết quả.</b> Kết quả cuối: '+badge(a.finalResult || '')+'</div>';
   return '<div class="alert info">Trạng thái hồ sơ: '+badge(a.status || 'DRAFT')+'</div>';
@@ -755,7 +774,7 @@ function renderWorkflow(status){
   };
   workflowBox.innerHTML = `<div class="workflow-box">
     ${step('DRAFT','1. Lưu hồ sơ','Nhập thông tin và tải minh chứng.')}
-    ${step('SUBMITTED','2. Chờ duyệt','Sau khi nộp, hồ sơ tạm khóa chỉnh sửa.')}
+    ${step('SUBMITTED','2. Chờ duyệt','Sau khi nộp, admin có thể mở thời gian chỉnh sửa minh chứng.')}
     ${step('NEED_SUPPLEMENT','3. Bổ sung','Chỉ bổ sung khi người chấm yêu cầu và có lý do.')}
     ${step('FINALIZED','4. Chốt kết quả','Admin chốt kết quả cuối cùng.')}
   </div>`;
@@ -880,19 +899,42 @@ function renderReasonCell(st){
   return `${reason ? esc(reason) : '<span class="reason-empty">Chưa có</span>'}${need ? '<div class="supplement-hint">Bạn có thể bổ sung minh chứng mới theo lý do này.</div>' : ''}`;
 }
 
-function canAddEvidenceForCriterion(st){
+function isStudentEditWindowOpen(){
+  const w = APP.studentEditWindow || {};
+  return !!w.open;
+}
+function canManageEvidenceForCriterion(st){
   const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
   if(!app) return true;
+  if(app.status === 'FINALIZED') return false;
   if(app.status === 'DRAFT') return true;
   if(app.status === 'NEED_SUPPLEMENT') return !!st && (st.status === 'FAIL' || st.status === 'NEED_MORE');
+  if(app.status === 'SUBMITTED') return isStudentEditWindowOpen();
   return false;
 }
-function renderEvidenceList(files){
+function canAddEvidenceForCriterion(st){
+  return canManageEvidenceForCriterion(st);
+}
+function renderEvidenceList(files, criterionId, st){
+  const canManage = canManageEvidenceForCriterion(st);
   if(!files.length) return '<div class="muted">Chưa có tài liệu minh chứng.</div>';
   const pdfs=files.filter(f=>fileKindOf(f)==='PDF');
   const imgs=files.filter(f=>fileKindOf(f)==='IMAGE');
-  const renderList=(list,tag,label)=>list.length?`<div class="muted" style="margin-top:8px"><b>${label} (${list.length})</b></div><ul class="existing-files">${list.sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0)).map((f,i)=>`<li><span class="file-tag ${tag}">${tag.toUpperCase()}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span></li>`).join('')}</ul>`:'';
+  const renderItem=(f,tag)=>{
+    const actions = canManage ? `<button type="button" class="btn bad small" style="margin-left:6px" onclick="deleteEvidence('${esc(f.evidenceId)}')">Xóa</button>` : '';
+    return `<li><span class="file-tag ${tag}">${tag.toUpperCase()}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span>${actions}</li>`;
+  };
+  const renderList=(list,tag,label)=>list.length?`<div class="muted" style="margin-top:8px"><b>${label} (${list.length})</b></div><ul class="existing-files">${list.sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0)).map(f=>renderItem(f,tag)).join('')}</ul>`:'';
   return `<div class="muted"><b>Minh chứng đã tải:</b></div>${renderList(pdfs,'pdf','PDF')}${renderList(imgs,'image','Ảnh')}`;
+}
+async function deleteEvidence(evidenceId){
+  if(!confirm('Xóa minh chứng này? Thao tác không thể hoàn tác.')) return;
+  try{
+    showLoading(true);
+    await postApi('studentDeleteEvidence',{token:APP.token,evidenceId});
+    await loadMyApplication();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
 }
 function countExistingKind(criterionId, kind){
   return (APP.myApp?.evidences||[]).filter(e=>e.criterionId===criterionId && fileKindOf(e)===kind).length;
@@ -903,7 +945,7 @@ function countPendingKind(criterionId, kind){
 function renderEvidenceCell(item,files,st){
   const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
   const canAdd = canAddEvidenceForCriterion(st);
-  const existing = renderEvidenceList(files);
+  const existing = renderEvidenceList(files, item.criterionId, st);
   let action = '';
   if(canAdd){
     const pdfLeft = Math.max(0, APP.maxPdfPerCriterion - countExistingKind(item.criterionId,'PDF') - countPendingKind(item.criterionId,'PDF'));
@@ -922,7 +964,15 @@ function renderEvidenceCell(item,files,st){
     </div>`;
   }else{
     let msg = 'Hồ sơ đang khóa tải minh chứng.';
-    if(app && app.status === 'SUBMITTED') msg = 'Đã nộp hồ sơ, chờ người chấm duyệt.';
+    if(app && app.status === 'SUBMITTED'){
+      if(APP.allowStudentEdit && !isStudentEditWindowOpen()){
+        msg = APP.studentEditWindow && APP.studentEditWindow.untilDisplay
+          ? 'Đã hết thời gian chỉnh sửa minh chứng (hạn: '+APP.studentEditWindow.untilDisplay+').'
+          : 'Admin chưa mở hoặc đã đóng thời gian chỉnh sửa minh chứng.';
+      }else{
+        msg = 'Đã nộp hồ sơ, chờ người chấm duyệt.';
+      }
+    }
     if(app && app.status === 'FINALIZED') msg = 'Hồ sơ đã chốt kết quả, không thể bổ sung.';
     if(app && app.status === 'NEED_SUPPLEMENT') msg = 'Chỉ được bổ sung cho tiêu chí bị Không đạt hoặc Cần bổ sung.';
     action = `<div class="locked-evidence" style="margin-top:10px">${msg}</div>`;
@@ -1051,7 +1101,7 @@ async function saveApplication(submitNow){
     const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
 
     if(app && app.status === 'FINALIZED') throw new Error('Hồ sơ đã chốt kết quả, không thể cập nhật.');
-    if(app && app.status === 'SUBMITTED') throw new Error('Hồ sơ đã nộp và đang chờ duyệt. Chỉ được bổ sung khi người chấm yêu cầu.');
+    if(app && app.status === 'SUBMITTED' && !isStudentEditWindowOpen()) throw new Error('Hồ sơ đã nộp và đang chờ duyệt. Chỉ được sửa minh chứng trong thời gian admin cho phép.');
 
     if(app && app.status === 'NEED_SUPPLEMENT'){
       if(!files.length) throw new Error('Vui lòng tải ít nhất 01 minh chứng bổ sung.');
@@ -1127,12 +1177,40 @@ function renderDataTools(){
     dataToolsBox.innerHTML = '<div class="alert bad">Chỉ admin mới được sử dụng chức năng dữ liệu.</div>';
     return;
   }
-  dataToolsBox.innerHTML = `<div class="box-title"><div><h2>Quản trị dữ liệu</h2><div class="desc">Khu vực thao tác nguy hiểm, chỉ dùng khi cần làm sạch hoặc xóa hồ sơ.</div></div></div>
+  const ew = APP.studentEditWindow || {};
+  const untilVal = APP.studentEditUntil ? String(APP.studentEditUntil).replace(' ', 'T').slice(0, 16) : '';
+  dataToolsBox.innerHTML = `<div class="box-title"><div><h2>Quản trị dữ liệu</h2><div class="desc">Cấu hình thời gian chỉnh sửa minh chứng và các thao tác dữ liệu.</div></div></div>
+    <div class="config-zone" style="margin-bottom:20px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#f8fafc">
+      <h3>Thời gian chỉnh sửa minh chứng (sinh viên)</h3>
+      <p class="muted">Khi bật, sinh viên đã nộp hồ sơ (trạng thái <b>Đã nộp</b>) có thể thêm/xóa PDF và ảnh theo từng tiêu chí cho đến hết thời hạn.</p>
+      <div class="field-grid" style="margin-top:12px">
+        <div class="field col-12"><label><input type="checkbox" id="cfgAllowStudentEdit" ${APP.allowStudentEdit?'checked':''}> Cho phép sinh viên sửa minh chứng đã nộp</label></div>
+        <div class="field col-6"><label>Hạn chỉnh sửa (để trống = không giới hạn thời gian)</label><input type="datetime-local" id="cfgStudentEditUntil" value="${esc(untilVal)}"></div>
+        <div class="field col-6"><label>Trạng thái hiện tại</label><div class="alert ${ew.open?'ok':'info'}" style="margin:0">${ew.open?'Đang mở cho sinh viên sửa':(APP.allowStudentEdit?'Đã bật nhưng hết hạn hoặc chưa đến hạn':'Đang tắt')}${ew.untilDisplay?' · Hạn: '+esc(ew.untilDisplay):''}</div></div>
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="saveStudentEditConfig()">Lưu cấu hình chỉnh sửa</button>
+    </div>
     <div class="danger-zone">
       <h3>Xóa toàn bộ dữ liệu hồ sơ</h3>
       <p class="muted">Chức năng này xóa toàn bộ hồ sơ, minh chứng, kết quả duyệt trong Google Sheet và đưa thư mục minh chứng hồ sơ vào thùng rác. Tài khoản và tiêu chí vẫn được giữ lại.</p>
       <button class="btn bad" onclick="clearApplicationData()">Xóa toàn bộ dữ liệu hồ sơ</button>
     </div>`;
+}
+
+async function saveStudentEditConfig(){
+  try{
+    showLoading(true);
+    const allow = document.getElementById('cfgAllowStudentEdit').checked;
+    let until = document.getElementById('cfgStudentEditUntil').value || '';
+    if(until) until = until.replace('T', ' ') + ':00';
+    const res = await postApi('updateStudentEditConfig',{token:APP.token,allowStudentEdit:allow,studentEditUntil:until});
+    APP.allowStudentEdit = allow;
+    APP.studentEditUntil = until;
+    if(res.studentEditWindow) APP.studentEditWindow = res.studentEditWindow;
+    alert(res.message || 'Đã lưu.');
+    renderDataTools();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
 }
 
 async function clearApplicationData(){
