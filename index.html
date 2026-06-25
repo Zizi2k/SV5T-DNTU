@@ -489,7 +489,9 @@
               <div class="field col-3"><label>Ngày sinh <span class="req">*</span></label><input id="app_birthDate" type="date"></div>
               <div class="field col-3"><label>Dân tộc <span class="req">*</span></label><input id="app_ethnicity" placeholder="VD: Kinh"></div>
               <div class="field col-3"><label>Sinh viên năm thứ <span class="req">*</span></label><select id="app_yearOfStudy"><option value="">Chọn</option><option value="1">Năm 1</option><option value="2">Năm 2</option><option value="3">Năm 3</option><option value="4">Năm 4</option><option value="5">Khác</option></select></div>
-              <div class="field col-3"><label>Lớp <span class="req">*</span></label><select id="app_className"><option value="">Chọn lớp</option><option value="22DTH1">22DTH1</option><option value="22DTH2">22DTH2</option><option value="22DTH3">22DTH3</option><option value="22DTH4">22DTH4</option><option value="22DTH5">22DTH5</option><option value="22DTH6">22DTH6</option><option value="22DTH7">22DTH7</option><option value="23DTH1">23DTH1</option><option value="23DTH2">23DTH2</option><option value="23DTH3">23DTH3</option><option value="23DTH4">23DTH4</option><option value="23DTH5">23DTH5</option><option value="24DTH1">24DTH1</option><option value="24DTH2">24DTH2</option><option value="24DTH3">24DTH3</option><option value="24DPM1">24DPM1</option><option value="25DTH">25DTH</option><option value="25DPM">25DPM</option><option value="25DTN">25DTN</option></select></div>
+              <div class="field col-3"><label>Khoa <span class="req">*</span></label><select id="app_faculty" onchange="onAppFacultyChange()"><option value="">Chọn khoa</option></select></div>
+              <div class="field col-3"><label>Lớp <span class="req">*</span></label><select id="app_className" onchange="onAppClassChange()"><option value="">Chọn lớp</option></select></div>
+              <div class="field col-3" id="app_classCustomWrap" style="display:none"><label>Lớp (nhập tay) <span class="req">*</span></label><input id="app_classNameCustom" placeholder="VD: 26DTH1"></div>
               <div class="field col-3"><label>Chức vụ Đoàn, Hội <span class="req">*</span></label><input id="app_unionPosition" placeholder="VD: Đoàn viên / Chi hội trưởng"></div>
               <div class="field col-4"><label>Số điện thoại <span class="req">*</span></label><input id="app_phone" placeholder="09xxxxxxxx"></div>
               <div class="field col-8"><label>Ghi chú hồ sơ</label><input id="app_studentNote" placeholder="Ghi chú thêm nếu có"></div>
@@ -549,7 +551,7 @@
 <script>
 // Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-student-edit';
+const APP_BUILD = '20260625-org-units';
 
 let API_URL = DEFAULT_API_URL;
 try {
@@ -565,7 +567,8 @@ const APP = {
   token: localStorage.getItem('SV5T_TOKEN') || '',
   user: JSON.parse(localStorage.getItem('SV5T_USER') || 'null'),
   criteria: [], groupedCriteria: [], myApp: null, maxFileMb: 8, maxPdfPerCriterion: 5, maxImagePerCriterion: 30,
-  allowStudentEdit: false, studentEditUntil: '', studentEditWindow: { open: false, untilDisplay: '' }
+  allowStudentEdit: false, studentEditUntil: '', studentEditWindow: { open: false, untilDisplay: '' },
+  orgUnits: { faculties: [], classesByFaculty: {}, allowCustomClass: true }
 };
 
 
@@ -648,7 +651,9 @@ async function testApi(){
     APP.allowStudentEdit=!!res.allowStudentEdit;
     APP.studentEditUntil=res.studentEditUntil||'';
     APP.studentEditWindow=res.studentEditWindow||{open:false,untilDisplay:''};
+    if(res.orgUnits) APP.orgUnits=res.orgUnits;
     applyBrandingFromApi(res);
+    renderOrgUnitSelects();
     renderCriteriaTable();
     const box=document.getElementById('apiStatusBox'); if(box){box.style.display='none';box.innerHTML='';}
   }catch(err){
@@ -695,7 +700,7 @@ async function login(type){
 function applyLoginUi(){
   topUser.textContent = APP.user ? (APP.user.fullName || APP.user.username) : '';
   if(APP.user.role==='STUDENT'){
-    studentAuthBox.style.display='none'; studentProfileBox.style.display='block'; studentInfoText.textContent=`${APP.user.fullName} - ${APP.user.studentId} - ${APP.user.className||''}`; showTab('student',document.querySelector('[data-tab="student"]')); loadMyApplication();
+    studentAuthBox.style.display='none'; studentProfileBox.style.display='block'; studentInfoText.textContent=`${APP.user.fullName} - ${APP.user.studentId||''} - ${APP.user.faculty||''} - ${APP.user.className||''}`; showTab('student',document.querySelector('[data-tab="student"]')); loadMyApplication();
   } else {
     reviewerLoginBox.style.display='none'; reviewerDashboard.style.display='block'; adminInfoText.textContent=`${APP.user.fullName||APP.user.username} - ${APP.user.role}`; showTab('reviewer',document.querySelector('[data-tab="reviewer"]')); loadDashboard();
   }
@@ -711,8 +716,8 @@ async function loadMyApplication(){
     app_schoolYear.value=(res.application&&res.application.schoolYear)||'';
     if(!app_schoolYear.value){ const bs=await jsonp('bootstrap'); app_schoolYear.value=bs.schoolYear||'2025-2026'; }
     renderCriteriaTable(res);
-    if(res.application){ fillApplication(res); renderWorkflow(res.application.status); updateStudentActionButtons(res.application.status); studentStatus.innerHTML=renderStudentStatus(res); if(res.editWindow) APP.studentEditWindow=res.editWindow; }
-    else { renderWorkflow('DRAFT'); updateStudentActionButtons('DRAFT'); studentStatus.innerHTML='<div class="alert warn">Bạn chưa có hồ sơ. Vui lòng nhập thông tin và nộp hồ sơ.</div>'; }
+    if(res.application){ fillApplication(res); renderWorkflow(res.application.status); updateStudentActionButtons(res.application.status); studentStatus.innerHTML=renderStudentStatus(res); if(res.editWindow) APP.studentEditWindow=res.editWindow; if(res.orgUnits) APP.orgUnits=res.orgUnits; }
+    else { renderOrgUnitSelects(APP.user?.faculty||'', APP.user?.className||''); renderWorkflow('DRAFT'); updateStudentActionButtons('DRAFT'); studentStatus.innerHTML='<div class="alert warn">Bạn chưa có hồ sơ. Vui lòng nhập thông tin và nộp hồ sơ.</div>'; }
   }catch(err){studentStatus.innerHTML='<div class="alert bad">'+esc(err.message)+'</div>'}
   finally{showLoading(false)}
 }
@@ -780,6 +785,71 @@ function renderWorkflow(status){
   </div>`;
 }
 
+function orgUnitsData(){
+  return APP.orgUnits || {faculties:[], classesByFaculty:{}, allowCustomClass:true};
+}
+function renderOrgUnitSelects(facultyVal, classVal){
+  const org = orgUnitsData();
+  const facSel = document.getElementById('app_faculty');
+  const clsSel = document.getElementById('app_className');
+  if(!facSel || !clsSel) return;
+  facultyVal = facultyVal || '';
+  classVal = classVal || '';
+  facSel.innerHTML = '<option value="">Chọn khoa</option>' + org.faculties.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('');
+  const matchFac = org.faculties.find(f=>String(f).toLowerCase()===String(facultyVal).toLowerCase()) || '';
+  facSel.value = matchFac || org.faculties[0] || '';
+  refreshClassOptions(classVal);
+}
+function refreshClassOptions(classVal){
+  const org = orgUnitsData();
+  const facSel = document.getElementById('app_faculty');
+  const clsSel = document.getElementById('app_className');
+  const customWrap = document.getElementById('app_classCustomWrap');
+  const customInput = document.getElementById('app_classNameCustom');
+  if(!facSel || !clsSel) return;
+  const fac = facSel.value;
+  const classes = org.classesByFaculty[fac] || [];
+  let opts = '<option value="">Chọn lớp</option>' + classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if(org.allowCustomClass) opts += '<option value="__CUSTOM__">Khác (nhập tay)</option>';
+  clsSel.innerHTML = opts;
+  classVal = classVal || '';
+  const matchClass = classes.find(c=>String(c).toLowerCase()===String(classVal).toLowerCase());
+  if(matchClass){
+    clsSel.value = matchClass;
+    if(customWrap) customWrap.style.display='none';
+    if(customInput) customInput.value='';
+  }else if(classVal && org.allowCustomClass){
+    clsSel.value='__CUSTOM__';
+    if(customWrap) customWrap.style.display='block';
+    if(customInput) customInput.value=classVal;
+  }else{
+    clsSel.value='';
+    if(customWrap) customWrap.style.display='none';
+    if(customInput) customInput.value='';
+  }
+}
+function onAppFacultyChange(){ refreshClassOptions(''); }
+function onAppClassChange(){
+  const wrap = document.getElementById('app_classCustomWrap');
+  const clsSel = document.getElementById('app_className');
+  if(wrap && clsSel) wrap.style.display = clsSel.value==='__CUSTOM__' ? 'block' : 'none';
+}
+function getAppClassNameValue(){
+  const clsSel = document.getElementById('app_className');
+  if(!clsSel) return '';
+  if(clsSel.value==='__CUSTOM__') return (document.getElementById('app_classNameCustom')?.value||'').trim();
+  return clsSel.value;
+}
+function facultySelectOptions(selected, includeAll){
+  const org = orgUnitsData();
+  let html = includeAll ? '<option value="*">Tất cả khoa</option>' : '<option value="">Chọn khoa</option>';
+  html += org.faculties.map(f=>{
+    const sel = String(f).toLowerCase()===String(selected||'').toLowerCase() ? ' selected' : '';
+    return `<option value="${esc(f)}"${sel}>${esc(f)}</option>`;
+  }).join('');
+  return html;
+}
+
 function fillApplication(res){
   const a=res.application;
   app_fullName.value=a.fullName||APP.user.fullName||'';
@@ -787,7 +857,7 @@ function fillApplication(res){
   app_birthDate.value=(a.birthDate||APP.user.birthDate||'').slice(0,10);
   app_ethnicity.value=a.ethnicity||APP.user.ethnicity||'';
   app_yearOfStudy.value=a.yearOfStudy||APP.user.yearOfStudy||'';
-  app_className.value=a.className||APP.user.className||'';
+  renderOrgUnitSelects(a.faculty||APP.user.faculty||'', a.className||APP.user.className||'');
   app_unionPosition.value=a.unionPosition||APP.user.unionPosition||'';
   app_phone.value=a.phone||APP.user.phone||'';
   app_schoolYear.value=a.schoolYear||app_schoolYear.value||'';
@@ -1112,7 +1182,7 @@ async function saveApplication(submitNow){
       return;
     }
 
-    const payload={token:APP.token,application:{fullName:app_fullName.value,gender:app_gender.value,birthDate:app_birthDate.value,ethnicity:app_ethnicity.value,yearOfStudy:app_yearOfStudy.value,className:app_className.value,unionPosition:app_unionPosition.value,phone:app_phone.value,schoolYear:app_schoolYear.value,studentNote:app_studentNote.value,faculty:'CLB SV5T'},claims:collectClaims(),files};
+    const payload={token:APP.token,application:{fullName:app_fullName.value,gender:app_gender.value,birthDate:app_birthDate.value,ethnicity:app_ethnicity.value,yearOfStudy:app_yearOfStudy.value,faculty:app_faculty.value,className:getAppClassNameValue(),unionPosition:app_unionPosition.value,phone:app_phone.value,schoolYear:app_schoolYear.value,studentNote:app_studentNote.value},claims:collectClaims(),files};
     const res=await postApi(submitNow?'studentSubmitApplication':'studentSaveApplication',payload);
     applicationResult.innerHTML='<div class="alert ok">'+esc(res.message)+'</div>';
     await loadMyApplication();
@@ -1172,14 +1242,48 @@ async function changeMyPassword(){
   finally{ showLoading(false); }
 }
 
+function renderOrgClassAdminGrid(faculties, classesByFaculty){
+  faculties = faculties || [];
+  classesByFaculty = classesByFaculty || {};
+  if(!faculties.length) return '<div class="muted">Nhập danh sách khoa rồi bấm "Áp dụng danh sách khoa".</div>';
+  return `<div class="field-grid">${faculties.map(f=>{
+    const classes = (classesByFaculty[f]||[]).join('\n');
+    return `<div class="field col-6"><label>Lớp — ${esc(f)}</label><textarea class="cfg-class-list" data-faculty="${esc(f)}" rows="5" placeholder="Mỗi dòng một lớp">${esc(classes)}</textarea></div>`;
+  }).join('')}</div>`;
+}
+function syncOrgClassInputs(){
+  const org = orgUnitsData();
+  const faculties = (document.getElementById('cfgFaculties')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  const grid = document.getElementById('cfgClassesGrid');
+  if(!grid) return;
+  const existing = {};
+  document.querySelectorAll('.cfg-class-list').forEach(ta=>{
+    const f = ta.dataset.faculty;
+    if(f) existing[f] = ta.value.split('\n').map(s=>s.trim()).filter(Boolean);
+  });
+  const merged = {};
+  faculties.forEach(f=>{ merged[f] = existing[f] || org.classesByFaculty[f] || []; });
+  grid.innerHTML = renderOrgClassAdminGrid(faculties, merged);
+}
+
 function renderDataTools(){
   if(APP.user.role !== 'ADMIN'){
     dataToolsBox.innerHTML = '<div class="alert bad">Chỉ admin mới được sử dụng chức năng dữ liệu.</div>';
     return;
   }
   const ew = APP.studentEditWindow || {};
+  const org = orgUnitsData();
   const untilVal = APP.studentEditUntil ? String(APP.studentEditUntil).replace(' ', 'T').slice(0, 16) : '';
-  dataToolsBox.innerHTML = `<div class="box-title"><div><h2>Quản trị dữ liệu</h2><div class="desc">Cấu hình thời gian chỉnh sửa minh chứng và các thao tác dữ liệu.</div></div></div>
+  dataToolsBox.innerHTML = `<div class="box-title"><div><h2>Quản trị dữ liệu</h2><div class="desc">Cấu hình khoa/lớp, thời gian chỉnh sửa minh chứng và các thao tác dữ liệu.</div></div></div>
+    <div class="config-zone" style="margin-bottom:20px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#f8fafc">
+      <h3>Cấu hình khoa và lớp</h3>
+      <p class="muted">Sinh viên chọn <b>Khoa</b> và <b>Lớp</b> từ danh sách này khi nộp hồ sơ. Mỗi khoa có danh sách lớp riêng.</p>
+      <div class="field" style="margin-top:12px"><label>Danh sách khoa (mỗi dòng một khoa)</label><textarea id="cfgFaculties" rows="4" placeholder="VD: Khoa Công nghệ thông tin">${esc((org.faculties||[]).join('\n'))}</textarea></div>
+      <button type="button" class="btn secondary small" style="margin:8px 0" onclick="syncOrgClassInputs()">Áp dụng danh sách khoa</button>
+      <div id="cfgClassesGrid">${renderOrgClassAdminGrid(org.faculties, org.classesByFaculty)}</div>
+      <div class="field" style="margin-top:12px"><label><input type="checkbox" id="cfgAllowCustomClass" ${org.allowCustomClass?'checked':''}> Cho phép sinh viên nhập lớp khác (ngoài danh sách)</label></div>
+      <button class="btn primary" style="margin-top:12px" onclick="saveOrgUnitsConfig()">Lưu cấu hình khoa/lớp</button>
+    </div>
     <div class="config-zone" style="margin-bottom:20px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#f8fafc">
       <h3>Thời gian chỉnh sửa minh chứng (sinh viên)</h3>
       <p class="muted">Khi bật, sinh viên đã nộp hồ sơ (trạng thái <b>Đã nộp</b>) có thể thêm/xóa PDF và ảnh theo từng tiêu chí cho đến hết thời hạn.</p>
@@ -1195,6 +1299,25 @@ function renderDataTools(){
       <p class="muted">Chức năng này xóa toàn bộ hồ sơ, minh chứng, kết quả duyệt trong Google Sheet và đưa thư mục minh chứng hồ sơ vào thùng rác. Tài khoản và tiêu chí vẫn được giữ lại.</p>
       <button class="btn bad" onclick="clearApplicationData()">Xóa toàn bộ dữ liệu hồ sơ</button>
     </div>`;
+}
+
+async function saveOrgUnitsConfig(){
+  try{
+    showLoading(true);
+    const faculties = (document.getElementById('cfgFaculties')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    const classesByFaculty = {};
+    faculties.forEach(f=>{
+      const ta = Array.from(document.querySelectorAll('.cfg-class-list')).find(el => el.dataset.faculty === f);
+      classesByFaculty[f] = ta ? ta.value.split('\n').map(s=>s.trim()).filter(Boolean) : [];
+    });
+    const allowCustomClass = !!document.getElementById('cfgAllowCustomClass')?.checked;
+    const res = await postApi('updateOrgUnits',{token:APP.token,orgUnits:{faculties,classesByFaculty,allowCustomClass}});
+    if(res.orgUnits) APP.orgUnits = res.orgUnits;
+    alert(res.message || 'Đã lưu.');
+    renderDataTools();
+    renderOrgUnitSelects();
+  }catch(e){ alert(e.message); }
+  finally{ showLoading(false); }
 }
 
 async function saveStudentEditConfig(){
@@ -1369,7 +1492,7 @@ async function loadUsers(){if(APP.user.role!=='ADMIN')return; try{const r=await 
   <div class="field col-3"><label>Họ tên</label><input id="u_fullName"></div>
   <div class="field col-3"><label>Email</label><input id="u_email"></div>
   <div class="field col-3"><label>Vai trò</label><select id="u_role"><option>REVIEWER</option><option>ADMIN</option><option>STUDENT</option></select></div>
-  <div class="field col-3"><label>Khoa</label><input id="u_faculty" value="CLB SV5T"></div>
+  <div class="field col-3"><label>Khoa (người chấm)</label><select id="u_faculty">${facultySelectOptions('', true)}</select></div>
   <div class="field col-3"><label>Trạng thái</label><select id="u_active"><option value="true">Hoạt động</option><option value="false">Khóa</option></select></div>
 </div>
 <button class="btn primary" style="margin:10px 0" onclick="saveUser()">Tạo / cập nhật tài khoản</button>

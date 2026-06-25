@@ -224,6 +224,8 @@ function routePost_(action, payload) {
       return apiUpdateConfig_(payload.token, payload.key, payload.value, payload.note);
     case 'updateStudentEditConfig':
       return apiUpdateStudentEditConfig_(payload.token, payload);
+    case 'updateOrgUnits':
+      return apiUpdateOrgUnits_(payload.token, payload);
     case 'studentDeleteEvidence':
       return apiStudentDeleteEvidence_(payload.token, payload.evidenceId);
     case 'studentUpdateEvidenceTitle':
@@ -370,7 +372,8 @@ function seedConfig_() {
     { key: 'SHARE_EVIDENCE_BY_LINK', value: 'TRUE', note: 'TRUE: minh chứng mở được bằng link', updatedAt: new Date() },
     { key: 'ORGANIZATION_LINE_1', value: 'HỘI SINH VIÊN VIỆT NAM', note: 'Dòng đơn vị 1', updatedAt: new Date() },
     { key: 'ORGANIZATION_LINE_2', value: 'TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', note: 'Dòng đơn vị 2', updatedAt: new Date() },
-    { key: 'ORGANIZATION_LINE_3', value: 'CLB SV5T', note: 'Dòng đơn vị 3', updatedAt: new Date() }
+    { key: 'ORGANIZATION_LINE_3', value: 'CLB SV5T', note: 'Dòng đơn vị 3', updatedAt: new Date() },
+    { key: 'ORG_UNITS_JSON', value: JSON.stringify(defaultOrgUnits_()), note: 'Cấu hình khoa và lớp (JSON)', updatedAt: new Date() }
   ]);
 }
 
@@ -493,7 +496,8 @@ function apiBootstrap_() {
       getConfig_('ORGANIZATION_LINE_3', 'CLB SV5T')
     ],
     criteria: criteria,
-    groupedCriteria: groupCriteria_(criteria)
+    groupedCriteria: groupCriteria_(criteria),
+    orgUnits: getOrgUnits_()
   });
 }
 
@@ -542,7 +546,7 @@ function apiRegister_(payload) {
     gender: clean_(payload.gender),
     birthDate: clean_(payload.birthDate),
     ethnicity: clean_(payload.ethnicity),
-    faculty: 'CLB SV5T',
+    faculty: clean_(payload.faculty) || defaultOrgUnits_().faculties[0] || 'CLB SV5T',
     className: clean_(payload.className),
     unionPosition: clean_(payload.unionPosition),
     yearOfStudy: clean_(payload.yearOfStudy),
@@ -645,6 +649,9 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
   }
 
   const schoolYear = clean_(application.schoolYear) || getConfig_('SCHOOL_YEAR', '2025-2026');
+  const faculty = clean_(application.faculty) || user.faculty || '';
+  const className = clean_(application.className) || user.className || '';
+  validateFacultyClass_(faculty, className);
 
   if (!app) {
     const applicationId = 'SV5T-' + Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + Utilities.getUuid().slice(0, 8).toUpperCase();
@@ -662,8 +669,8 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
       ethnicity: user.ethnicity,
       email: user.email,
       phone: user.phone,
-      faculty: 'CLB SV5T',
-      className: user.className,
+      faculty: faculty || defaultOrgUnits_().faculties[0] || 'CLB SV5T',
+      className: className,
       unionPosition: user.unionPosition,
       yearOfStudy: user.yearOfStudy,
       schoolYear: schoolYear,
@@ -695,8 +702,8 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
     ethnicity: clean_(application.ethnicity),
     email: clean_(application.email) || user.email,
     phone: clean_(application.phone) || user.phone,
-    faculty: 'CLB SV5T',
-    className: clean_(application.className) || user.className,
+    faculty: faculty || defaultOrgUnits_().faculties[0] || 'CLB SV5T',
+    className: className || user.className,
     unionPosition: clean_(application.unionPosition),
     yearOfStudy: clean_(application.yearOfStudy) || user.yearOfStudy,
     schoolYear: schoolYear,
@@ -875,11 +882,21 @@ function apiUpdateStudentEditConfig_(token, payload) {
   return ok_({ message: 'Đã cập nhật cấu hình thời gian chỉnh sửa minh chứng.', studentEditWindow: getStudentEditWindow_() });
 }
 
+function apiUpdateOrgUnits_(token, payload) {
+  const actor = requireRole_(token, [SV5T.ROLE.ADMIN]);
+  payload = payload || {};
+  const orgUnits = normalizeOrgUnits_(payload.orgUnits || payload);
+  setOrgUnits_(orgUnits);
+  audit_(actor, 'UPDATE_ORG_UNITS', 'CONFIG', 'ORG_UNITS', { facultyCount: orgUnits.faculties.length });
+  return ok_({ message: 'Đã cập nhật danh sách khoa và lớp.', orgUnits: orgUnits });
+}
+
 function validateSubmission_(applicationId) {
   const app = getApplication_(applicationId);
-  if (!app.fullName || !app.gender || !app.birthDate || !app.ethnicity || !app.yearOfStudy || !app.className || !app.unionPosition || !app.phone) {
-    throw new Error('Vui lòng nhập đủ thông tin: Họ tên, giới tính, ngày sinh, dân tộc, sinh viên năm thứ, lớp, chức vụ Đoàn/Hội và số điện thoại.');
+  if (!app.fullName || !app.gender || !app.birthDate || !app.ethnicity || !app.yearOfStudy || !app.faculty || !app.className || !app.unionPosition || !app.phone) {
+    throw new Error('Vui lòng nhập đủ thông tin: Họ tên, giới tính, ngày sinh, dân tộc, sinh viên năm thứ, khoa, lớp, chức vụ Đoàn/Hội và số điện thoại.');
   }
+  validateFacultyClass_(app.faculty, app.className);
 
   const criteria = getCriteria_();
   const evidence = readObjects_(SV5T.SHEETS.EVIDENCES).filter(function (e) {
@@ -1128,7 +1145,7 @@ function apiUpsertUser_(token, userPayload) {
     gender: clean_(userPayload.gender),
     birthDate: clean_(userPayload.birthDate),
     ethnicity: clean_(userPayload.ethnicity),
-    faculty: clean_(userPayload.faculty) || (role === SV5T.ROLE.REVIEWER ? 'CLB SV5T' : '*'),
+    faculty: clean_(userPayload.faculty) || (role === SV5T.ROLE.REVIEWER ? (getOrgUnits_().faculties[0] || 'CLB SV5T') : '*'),
     className: clean_(userPayload.className),
     unionPosition: clean_(userPayload.unionPosition),
     yearOfStudy: clean_(userPayload.yearOfStudy),
@@ -1637,7 +1654,8 @@ function applicationPayload_(app, user, includeSensitive) {
     summary: compute.summary,
     groups: compute.groups,
     canSupplement: String(app.status) !== SV5T.APP_STATUS.FINALIZED,
-    editWindow: getStudentEditWindow_()
+    editWindow: getStudentEditWindow_(),
+    orgUnits: getOrgUnits_()
   };
 }
 
@@ -1953,6 +1971,94 @@ function canStudentManageEvidence_(app, criterionId, reviewStatus) {
   return false;
 }
 
+function defaultOrgUnits_() {
+  const classes = [
+    '22DTH1', '22DTH2', '22DTH3', '22DTH4', '22DTH5', '22DTH6', '22DTH7',
+    '23DTH1', '23DTH2', '23DTH3', '23DTH4', '23DTH5',
+    '24DTH1', '24DTH2', '24DTH3', '24DPM1',
+    '25DTH', '25DPM', '25DTN'
+  ];
+  return {
+    faculties: ['Khoa Công nghệ thông tin', 'CLB SV5T'],
+    classesByFaculty: {
+      'Khoa Công nghệ thông tin': classes.slice(),
+      'CLB SV5T': classes.slice()
+    },
+    allowCustomClass: true
+  };
+}
+
+function normalizeOrgUnits_(raw) {
+  raw = raw || {};
+  const faculties = (Array.isArray(raw.faculties) ? raw.faculties : [])
+    .map(function (f) { return clean_(f); })
+    .filter(Boolean);
+  const uniqFaculties = [];
+  faculties.forEach(function (f) {
+    if (uniqFaculties.indexOf(f) === -1) uniqFaculties.push(f);
+  });
+  if (!uniqFaculties.length) throw new Error('Cần ít nhất một khoa/đơn vị.');
+
+  const classesByFaculty = {};
+  const source = raw.classesByFaculty && typeof raw.classesByFaculty === 'object' ? raw.classesByFaculty : {};
+  uniqFaculties.forEach(function (faculty) {
+    const list = Array.isArray(source[faculty]) ? source[faculty] : [];
+    const classes = [];
+    list.forEach(function (c) {
+      const name = clean_(c);
+      if (name && classes.indexOf(name) === -1) classes.push(name);
+    });
+    classesByFaculty[faculty] = classes;
+  });
+
+  return {
+    faculties: uniqFaculties,
+    classesByFaculty: classesByFaculty,
+    allowCustomClass: bool_(raw.allowCustomClass)
+  };
+}
+
+function getOrgUnits_() {
+  ensureOrgUnitsConfigKey_();
+  const raw = safeJson_(getConfig_('ORG_UNITS_JSON', ''), null);
+  if (!raw || !raw.faculties || !raw.faculties.length) return defaultOrgUnits_();
+  try {
+    return normalizeOrgUnits_(raw);
+  } catch (err) {
+    return defaultOrgUnits_();
+  }
+}
+
+function setOrgUnits_(orgUnits) {
+  orgUnits = normalizeOrgUnits_(orgUnits);
+  setConfig_('ORG_UNITS_JSON', JSON.stringify(orgUnits), 'Cấu hình khoa và lớp (JSON)');
+}
+
+function ensureOrgUnitsConfigKey_() {
+  const rows = readObjects_(SV5T.SHEETS.CONFIG);
+  const keys = rows.map(function (r) { return String(r.key).trim(); });
+  if (keys.indexOf('ORG_UNITS_JSON') === -1) {
+    setOrgUnits_(defaultOrgUnits_());
+  }
+}
+
+function validateFacultyClass_(faculty, className) {
+  faculty = clean_(faculty);
+  className = clean_(className);
+  if (!faculty) throw new Error('Vui lòng chọn khoa/đơn vị.');
+  if (!className) throw new Error('Vui lòng chọn hoặc nhập lớp.');
+
+  const org = getOrgUnits_();
+  const facultyKey = org.faculties.find(function (f) { return String(f).toLowerCase() === faculty.toLowerCase(); });
+  if (!facultyKey) throw new Error('Khoa/đơn vị không hợp lệ: ' + faculty);
+
+  const classes = org.classesByFaculty[facultyKey] || [];
+  const classOk = classes.some(function (c) { return String(c).toLowerCase() === className.toLowerCase(); });
+  if (!classOk && !org.allowCustomClass) {
+    throw new Error('Lớp không thuộc danh sách admin cấu hình cho khoa này.');
+  }
+}
+
 /***********************
  * AUTH / UTILITIES
  ***********************/
@@ -2190,6 +2296,12 @@ function capNhatCauHinhChinhSua_SV5T() {
   ensureSetup_();
   ensureStudentEditConfigKeys_();
   return { ok: true, message: 'Đã thêm cấu hình thời gian chỉnh sửa minh chứng sinh viên (ALLOW_STUDENT_EDIT, STUDENT_EDIT_UNTIL).' };
+}
+
+function capNhatCauHinhKhoaLop_SV5T() {
+  ensureSetup_();
+  ensureOrgUnitsConfigKey_();
+  return { ok: true, message: 'Đã thêm/cập nhật cấu hình khoa và lớp (ORG_UNITS_JSON).' };
 }
 
 function capNhatTenDonVi_CLB_SV5T() {
