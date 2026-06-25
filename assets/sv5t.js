@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-profile-actions';
+const APP_BUILD = '20260625-app-list';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -1340,8 +1340,45 @@ async function loadStats(){
     if(statsBox) statsBox.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>';
   }
 }
+function renderApplicationRow(a){
+  const adminDelete = APP.user.role==='ADMIN'
+    ? `<button type="button" class="btn bad small" onclick="deleteApplication('${esc(a.applicationId)}')">Xóa</button>`
+    : '';
+  return `<tr>
+    <td data-label="Mã hồ sơ" class="app-col-id">
+      <b class="app-id">${esc(a.applicationId)}</b>
+      <span class="muted app-updated">${fmtDate(a.updatedAt)}</span>
+    </td>
+    <td data-label="Sinh viên" class="app-col-student">
+      <span class="app-name">${esc(a.fullName)}</span>
+      ${a.studentId ? `<span class="muted">${esc(a.studentId)}</span>` : ''}
+    </td>
+    <td data-label="Lớp/Khoa" class="app-col-class">
+      <span>${esc(a.className)}</span>
+      <span class="muted">${esc(a.faculty)}</span>
+    </td>
+    <td data-label="Trạng thái" class="app-col-status">
+      ${badge(a.status)}${a.finalResult ? ' '+badge(a.finalResult) : ''}
+    </td>
+    <td data-label="Nhóm đạt" class="app-col-groups">${a.passGroups||0}/6</td>
+    <td data-label="Thao tác" class="app-col-actions">
+      <div class="account-actions app-row-actions">
+        <button type="button" class="btn primary small" onclick="openDetail('${esc(a.applicationId)}')">Mở chấm</button>
+        ${adminDelete}
+      </div>
+    </td>
+  </tr>`;
+}
 async function loadApplications(){
-  try{const r=await jsonp('listApplications',{token:APP.token,q:filterQ.value,status:filterStatus.value}); const rows=r.applications||[]; applicationList.innerHTML=rows.length?`<table><thead><tr><th>Mã hồ sơ</th><th>Sinh viên</th><th>Lớp/Khoa</th><th>Trạng thái</th><th>Nhóm đạt</th><th></th></tr></thead><tbody>${rows.map(a=>`<tr><td><b>${esc(a.applicationId)}</b><br><span class="muted">${fmtDate(a.updatedAt)}</span></td><td>${esc(a.fullName)}<br><span class="muted">${esc(a.studentId)}</span></td><td>${esc(a.className)}<br><span class="muted">${esc(a.faculty)}</span></td><td>${badge(a.status)} ${a.finalResult?'<br>'+badge(a.finalResult):''}</td><td>${a.passGroups||0}/6</td><td><div class="account-actions"><button class="btn primary small" onclick="openDetail('${esc(a.applicationId)}')">Mở chấm</button>${APP.user.role==='ADMIN'?`<button class="btn bad small" onclick="deleteApplication('${esc(a.applicationId)}')">Xóa</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="alert warn">Không có hồ sơ.</div>'}catch(e){applicationList.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}
+  try{
+    const r=await jsonp('listApplications',{token:APP.token,q:filterQ.value,status:filterStatus.value});
+    const rows=r.applications||[];
+    applicationList.innerHTML=rows.length
+      ? `<div class="table-scroll app-list-scroll"><table class="app-list-table"><thead><tr>
+          <th>Mã hồ sơ</th><th>Sinh viên</th><th>Lớp/Khoa</th><th>Trạng thái</th><th>Nhóm đạt</th><th>Thao tác</th>
+        </tr></thead><tbody>${rows.map(renderApplicationRow).join('')}</tbody></table></div>`
+      : '<div class="alert warn">Không có hồ sơ.</div>';
+  }catch(e){applicationList.innerHTML='<div class="alert bad">'+esc(e.message)+'</div>'}
 }
 async function openDetail(id){
   try{

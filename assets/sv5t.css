@@ -374,6 +374,136 @@
     }
     .danger-zone h3{margin:0 0 8px;color:#991b1b}
     .account-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+    /* Danh sách hồ sơ admin — responsive */
+    .app-list-scroll{
+      margin-top:4px;
+      border-radius:16px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .app-list-table{
+      width:100%;
+      min-width:880px;
+      table-layout:fixed;
+    }
+    .app-list-table th:nth-child(1){width:22%}
+    .app-list-table th:nth-child(2){width:18%}
+    .app-list-table th:nth-child(3){width:16%}
+    .app-list-table th:nth-child(4){width:14%}
+    .app-list-table th:nth-child(5){width:10%}
+    .app-list-table th:nth-child(6){width:20%}
+    .app-list-table .app-id{
+      display:block;
+      word-break:break-all;
+      overflow-wrap:anywhere;
+      font-size:12px;
+      line-height:1.35;
+    }
+    .app-list-table .app-updated{
+      display:block;
+      margin-top:4px;
+      font-size:11px;
+    }
+    .app-list-table .app-name{display:block;font-weight:600;color:var(--navy)}
+    .app-list-table td span.muted{display:block;margin-top:2px}
+    .app-list-table .app-col-status .pill{display:inline-block;margin:2px 4px 2px 0}
+    .app-row-actions{
+      display:flex;
+      flex-direction:row;
+      gap:8px;
+      flex-wrap:nowrap;
+      justify-content:flex-end;
+    }
+    .app-row-actions .btn{
+      flex:1 1 0;
+      min-width:0;
+      white-space:nowrap;
+    }
+
+    @media(max-width:900px){
+      .app-list-table{min-width:760px}
+    }
+
+    @media(max-width:768px){
+      .app-list-scroll{
+        overflow:visible;
+        border:0;
+        background:transparent;
+      }
+      .app-list-table{
+        display:block;
+        min-width:0;
+        width:100%;
+        border:0;
+        background:transparent;
+        overflow:visible;
+        border-radius:0;
+      }
+      .app-list-table thead{display:none}
+      .app-list-table tbody{
+        display:flex;
+        flex-direction:column;
+        gap:12px;
+      }
+      .app-list-table tr{
+        display:block;
+        background:#fff;
+        border:1px solid var(--line);
+        border-radius:16px;
+        padding:14px 16px;
+        box-shadow:0 8px 20px rgba(112,144,176,.08);
+      }
+      .app-list-table tr td{
+        display:flex;
+        align-items:flex-start;
+        justify-content:space-between;
+        gap:12px;
+        padding:10px 0;
+        border-bottom:1px solid var(--line);
+        text-align:right;
+      }
+      .app-list-table tr td:last-child{
+        border-bottom:0;
+        padding-bottom:0;
+      }
+      .app-list-table tr td:first-child{padding-top:0}
+      .app-list-table tr td::before{
+        content:attr(data-label);
+        flex:0 0 38%;
+        max-width:42%;
+        text-align:left;
+        font-size:11px;
+        font-weight:700;
+        text-transform:uppercase;
+        letter-spacing:.04em;
+        color:var(--muted);
+        line-height:1.4;
+        padding-top:2px;
+      }
+      .app-list-table tr td.app-col-id,
+      .app-list-table tr td.app-col-actions{
+        flex-direction:column;
+        align-items:stretch;
+        text-align:left;
+      }
+      .app-list-table tr td.app-col-id::before,
+      .app-list-table tr td.app-col-actions::before{margin-bottom:4px}
+      .app-row-actions{
+        flex-direction:row;
+        width:100%;
+        justify-content:stretch;
+      }
+      .app-row-actions .btn{
+        flex:1;
+        min-height:40px;
+      }
+    }
+
+    @media(max-width:480px){
+      .app-row-actions{flex-direction:column}
+      .app-row-actions .btn{width:100%;flex:1 1 auto}
+    }
+
     .mini-note{font-size:12px;color:var(--muted);margin-top:4px}
 @media(max-width:900px){.evidence-upload-grid{grid-template-columns:1fr}}
     @media(max-width:560px){
