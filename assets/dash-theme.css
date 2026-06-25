@@ -248,7 +248,15 @@ body.dash-body .shell{background:transparent;border:0;box-shadow:none;overflow:v
 .dash-avatar-img{
   object-fit:cover;border:2px solid #fff;
   box-shadow:0 4px 12px rgba(67,24,255,.18);
+  pointer-events:none;
 }
+.dash-avatar-text{pointer-events:none}
+.dash-avatar-hint{
+  display:block;margin-top:6px;font-size:11px;font-weight:600;color:var(--dash-primary);
+}
+.dash-sidebar-profile{margin-bottom:16px}
+.dash-sidebar-profile .dash-profile{margin-bottom:0}
+.student-dash-profile{display:none;margin-bottom:16px}
 .dash-avatar-edit{
   position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;
   background:#fff;border:1px solid var(--dash-line);display:flex;align-items:center;justify-content:center;
@@ -354,11 +362,13 @@ body.dash-body .dash-main:has(#detailBox.is-open){
 body.dash-nav-locked{overflow:hidden}
 
 /* ----- Desktop large (default) ----- */
-/* aside hidden below 1200px */
+.dash-sidebar-profile{display:none}
 
 /* ----- Tablet landscape / small laptop (≤1200px) ----- */
 @media(max-width:1200px){
   .dash-aside{display:none}
+  .dash-sidebar-profile{display:block}
+  .student-dash-profile{display:block}
   .dash-stats{grid-template-columns:repeat(2,1fr)}
   .dash-grid-2{grid-template-columns:1fr}
   .dash-header{padding:24px 24px 18px}

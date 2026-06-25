@@ -1,6 +1,6 @@
 ﻿// Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-responsive';
+const APP_BUILD = '20260625-avatar';
 const PORTAL = (document.body && document.body.dataset.portal) || 'student';
 
 let API_URL = DEFAULT_API_URL;
@@ -172,6 +172,9 @@ function profileInitials(u){
   if(parts.length >= 2) return (parts[0].charAt(0)+parts[parts.length-1].charAt(0)).toUpperCase();
   return name.charAt(0).toUpperCase();
 }
+function profileRoleLabel(u){
+  return u.role==='STUDENT'?'Sinh viên':(u.role==='ADMIN'?'Admin':'Người chấm');
+}
 function renderAvatarBlock(u){
   const initials = profileInitials(u);
   const inner = u.avatarUrl
@@ -182,6 +185,20 @@ function renderAvatarBlock(u){
     ${inner}
     <span class="dash-avatar-edit" aria-hidden="true">📷</span>
   </label>`;
+}
+function renderDashProfileCard(u, opts={}){
+  const name = profileDisplayName(u);
+  const loginId = (u.username||u.email||'').trim();
+  const hint = opts.showHint ? '<span class="dash-avatar-hint">Nhấn ảnh để đổi</span>' : '';
+  return `<div class="dash-profile">
+    ${renderAvatarBlock(u)}
+    <div class="dash-profile-meta">
+      <b title="${esc(name)}">${esc(name)}</b>
+      ${loginId && loginId.toLowerCase()!==name.toLowerCase() ? `<span class="dash-profile-email" title="${esc(loginId)}">${esc(loginId)}</span>` : ''}
+      <span class="dash-profile-role">${esc(profileRoleLabel(u))}</span>
+      ${hint}
+    </div>
+  </div>`;
 }
 async function uploadAvatar(input){
   const file = input && input.files && input.files[0];
@@ -196,35 +213,36 @@ async function uploadAvatar(input){
     });
     if(res.user){
       APP.user = res.user;
-      localStorage.setItem('SV5T_USER', JSON.stringify(APP.user));
+    }else if(res.avatarUrl && APP.user){
+      APP.user.avatarUrl = res.avatarUrl;
     }
-    renderDashAside();
-  }catch(e){ alert(e.message); }
+    if(APP.user) localStorage.setItem('SV5T_USER', JSON.stringify(APP.user));
+    renderDashProfiles();
+    alert(res.message || 'Đã cập nhật ảnh đại diện.');
+  }catch(e){ alert(e.message || 'Không tải được ảnh. Kiểm tra đã deploy Code.gs mới chưa.'); }
   finally{ showLoading(false); if(input) input.value=''; }
 }
-function renderDashAside(){
+window.uploadAvatar = uploadAvatar;
+function renderDashProfiles(){
+  if(!APP.user) return;
+  const u = APP.user;
   const aside=document.getElementById('dashAside');
-  if(!aside || !APP.user) return;
-  const u=APP.user;
-  const role=u.role==='STUDENT'?'Sinh viên':(u.role==='ADMIN'?'Admin':'Người chấm');
-  const name = profileDisplayName(u);
-  const loginId = (u.username||u.email||'').trim();
-  aside.innerHTML=`
-    <div class="dash-profile">
-      ${renderAvatarBlock(u)}
-      <div class="dash-profile-meta">
-        <b title="${esc(name)}">${esc(name)}</b>
-        ${loginId && loginId.toLowerCase()!==name.toLowerCase() ? `<span class="dash-profile-email" title="${esc(loginId)}">${esc(loginId)}</span>` : ''}
-        <span class="dash-profile-role">${esc(role)}</span>
-      </div>
-    </div>
-    ${renderMiniCalendar()}
-    <div class="dash-notice">
-      <h4>Thông báo</h4>
-      <div class="dash-notice-item"><b>Hệ thống SV5T</b><span>Nộp minh chứng đúng hạn xét duyệt.</span></div>
-      <div class="dash-notice-item"><b>CLB Sinh viên 5 tốt</b><span>ĐH Công nghệ Đồng Nai</span></div>
-    </div>`;
+  if(aside){
+    aside.innerHTML=`
+      ${renderDashProfileCard(u)}
+      ${renderMiniCalendar()}
+      <div class="dash-notice">
+        <h4>Thông báo</h4>
+        <div class="dash-notice-item"><b>Hệ thống SV5T</b><span>Nộp minh chứng đúng hạn xét duyệt.</span></div>
+        <div class="dash-notice-item"><b>CLB Sinh viên 5 tốt</b><span>ĐH Công nghệ Đồng Nai</span></div>
+      </div>`;
+  }
+  const sidebarProfile=document.getElementById('dashSidebarProfile');
+  if(sidebarProfile) sidebarProfile.innerHTML = renderDashProfileCard(u);
+  const studentProfile=document.getElementById('studentDashProfile');
+  if(studentProfile) studentProfile.innerHTML = renderDashProfileCard(u, { showHint: true });
 }
+function renderDashAside(){ renderDashProfiles(); }
 function renderDashCharts(s){
   const el=document.getElementById('dashCharts');
   if(!el) return;
