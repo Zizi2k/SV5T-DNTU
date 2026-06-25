@@ -73,8 +73,8 @@ const HEADERS = {
     'userId', 'username', 'passwordHash', 'passwordRaw', 'passwordSha256',
     'fullName', 'email', 'phone',
     'role', 'studentId', 'gender', 'birthDate', 'ethnicity',
-    'faculty', 'className', 'unionPosition', 'yearOfStudy',
-    'active', 'createdAt', 'updatedAt', 'lastLoginAt'
+    'faculty', 'className',     'unionPosition', 'yearOfStudy',
+    'active', 'avatarUrl', 'avatarFileId', 'createdAt', 'updatedAt', 'lastLoginAt'
   ],
   CRITERIA: [
     'criterionId', 'groupId', 'groupName', 'groupOrder', 'criterionOrder',
@@ -210,6 +210,10 @@ function routePost_(action, payload) {
       return apiResetUserPassword_(payload.token, payload.username, payload.newPassword);
     case 'setUserActive':
       return apiSetUserActive_(payload.token, payload.username, payload.active);
+    case 'deleteUser':
+      return apiDeleteUser_(payload.token, payload.username);
+    case 'uploadAvatar':
+      return apiUploadAvatar_(payload.token, payload.file);
     case 'changeMyPassword':
       return apiChangeMyPassword_(payload.token, payload.oldPasswordSha256, payload.oldPasswordRaw, payload.newPasswordRaw, payload.newPasswordSha256);
     case 'deleteApplication':
@@ -695,6 +699,7 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
     app = getApplication_(applicationId);
   }
 
+  const prevStatus = String(app.status || SV5T.APP_STATUS.DRAFT);
   const update = {
     fullName: clean_(application.fullName) || user.fullName,
     gender: clean_(application.gender),
@@ -713,10 +718,9 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
     noViolation: bool_(application.noViolation),
     nominated: bool_(application.nominated),
     studentNote: clean_(application.studentNote),
-    status: submitNow ? SV5T.APP_STATUS.SUBMITTED : String(app.status || SV5T.APP_STATUS.DRAFT),
+    status: prevStatus,
     updatedAt: now
   };
-  if (submitNow && !app.submittedAt) update.submittedAt = now;
 
   updateRowFields_(SV5T.SHEETS.APPLICATIONS, app._row, update);
   app = getApplication_(app.applicationId);
@@ -724,12 +728,20 @@ function apiStudentSaveApplication_(token, application, claims, files, submitNow
   saveClaims_(app, claims);
   if (files.length) uploadEvidenceFiles_(app, user, files);
 
-  if (submitNow) validateSubmission_(app.applicationId);
+  if (submitNow) {
+    validateSubmission_(app.applicationId);
+    updateRowFields_(SV5T.SHEETS.APPLICATIONS, app._row, {
+      status: SV5T.APP_STATUS.SUBMITTED,
+      submittedAt: app.submittedAt || now,
+      updatedAt: new Date()
+    });
+    app = getApplication_(app.applicationId);
+  }
 
   const compute = computeApplication_(getApplication_(app.applicationId));
   saveComputed_(app.applicationId, compute);
 
-  const wasSubmittedEdit = app && String(app.status) === SV5T.APP_STATUS.SUBMITTED && !submitNow;
+  const wasSubmittedEdit = prevStatus === SV5T.APP_STATUS.SUBMITTED && !submitNow;
   audit_(user, submitNow ? 'STUDENT_SUBMIT_APPLICATION' : (wasSubmittedEdit ? 'STUDENT_UPDATE_EVIDENCE' : 'STUDENT_SAVE_APPLICATION'), 'APPLICATION', app.applicationId, {
     fileCount: files.length
   });
@@ -1212,6 +1224,108 @@ function apiSetUserActive_(token, username, active) {
   return ok_({ message: bool_(active) ? 'Đã mở tài khoản.' : 'Đã khóa tài khoản.', username: username, active: bool_(active) });
 }
 
+function purgeApplicationData_(app) {
+  if (!app || !app.applicationId) return;
+  const applicationId = String(app.applicationId);
+  if (app.driveFolderId) {
+    try { DriveApp.getFolderById(app.driveFolderId).setTrashed(true); } catch (err) {}
+  }
+  deleteRowsWhere_(SV5T.SHEETS.REVIEWS, function (r) { return String(r.applicationId) === applicationId; });
+  deleteRowsWhere_(SV5T.SHEETS.EVIDENCES, function (r) { return String(r.applicationId) === applicationId; });
+  deleteRowsWhere_(SV5T.SHEETS.CLAIMS, function (r) { return String(r.applicationId) === applicationId; });
+  deleteRowsWhere_(SV5T.SHEETS.APPLICATIONS, function (r) { return String(r.applicationId) === applicationId; });
+}
+
+function apiDeleteUser_(token, username) {
+  const actor = requireRole_(token, [SV5T.ROLE.ADMIN]);
+  username = clean_(username).toLowerCase();
+  if (!username) throw new Error('Thiếu username.');
+
+  if (String(actor.username).toLowerCase() === username || String(actor.email || '').toLowerCase() === username) {
+    throw new Error('Không thể xóa tài khoản đang đăng nhập.');
+  }
+
+  const users = readObjects_(SV5T.SHEETS.USERS);
+  const user = users.find(function (u) {
+    return String(u.username).toLowerCase() === username || String(u.email || '').toLowerCase() === username;
+  });
+  if (!user) throw new Error('Không tìm thấy tài khoản.');
+  if (String(user.role).toUpperCase() !== SV5T.ROLE.STUDENT) {
+    throw new Error('Chỉ được xóa tài khoản sinh viên. Với người chấm/admin, hãy dùng Khóa tài khoản.');
+  }
+
+  const apps = readObjects_(SV5T.SHEETS.APPLICATIONS).filter(function (a) {
+    return String(a.studentUserId) === String(user.userId);
+  });
+  apps.forEach(function (app) { purgeApplicationData_(app); });
+
+  deleteRowsWhere_(SV5T.SHEETS.USERS, function (r) { return String(r.userId) === String(user.userId); });
+
+  if (user.avatarFileId) {
+    try { DriveApp.getFileById(String(user.avatarFileId)).setTrashed(true); } catch (err) {}
+  }
+
+  audit_(actor, 'DELETE_USER', 'USER', user.userId, {
+    username: username,
+    deletedApplications: apps.length
+  });
+  return ok_({
+    message: 'Đã xóa tài khoản sinh viên' + (apps.length ? ' và ' + apps.length + ' hồ sơ liên quan.' : '.'),
+    username: username,
+    deletedApplications: apps.length
+  });
+}
+
+function apiUploadAvatar_(token, file) {
+  const session = requireLogin_(token);
+  const users = readObjects_(SV5T.SHEETS.USERS);
+  const user = users.find(function (u) { return String(u.userId) === String(session.userId); });
+  if (!user) throw new Error('Không tìm thấy tài khoản.');
+
+  file = file || {};
+  const mimeType = String(file.mimeType || file.type || '');
+  if (mimeType.indexOf('image/') !== 0) throw new Error('Chỉ chấp nhận file ảnh (JPG, PNG, WEBP, GIF...).');
+
+  const dataUrl = String(file.base64 || '');
+  if (!dataUrl) throw new Error('File ảnh trống.');
+  const base64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',').pop() : dataUrl;
+  const bytes = Utilities.base64Decode(base64);
+  const maxMb = 2;
+  if (bytes.length > maxMb * 1024 * 1024) throw new Error('Ảnh đại diện tối đa ' + maxMb + 'MB.');
+
+  const evidenceRoot = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty(SV5T.PROP.EVIDENCE_ID));
+  const avatarsFolder = getOrCreateChildFolder_(evidenceRoot, '_AVATARS');
+
+  if (user.avatarFileId) {
+    try { DriveApp.getFileById(String(user.avatarFileId)).setTrashed(true); } catch (err) {}
+  }
+
+  let ext = '.jpg';
+  if (mimeType.indexOf('png') >= 0) ext = '.png';
+  else if (mimeType.indexOf('webp') >= 0) ext = '.webp';
+  else if (mimeType.indexOf('gif') >= 0) ext = '.gif';
+
+  const storedName = 'avatar_' + String(user.userId).slice(0, 8) + '_' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss') + ext;
+  const blob = Utilities.newBlob(bytes, mimeType, storedName);
+  const driveFile = avatarsFolder.createFile(blob);
+  if (getConfigBool_('SHARE_EVIDENCE_BY_LINK', true)) {
+    driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  }
+  const avatarUrl = 'https://drive.google.com/uc?export=view&id=' + driveFile.getId();
+
+  updateRowFields_(SV5T.SHEETS.USERS, user._row, {
+    avatarUrl: avatarUrl,
+    avatarFileId: driveFile.getId(),
+    updatedAt: new Date()
+  });
+
+  const updated = readObjects_(SV5T.SHEETS.USERS).find(function (u) { return String(u.userId) === String(user.userId); });
+  const sessionUser = publicUser_(updated);
+  CacheService.getScriptCache().put('SV5T_SESSION_' + token, JSON.stringify(sessionUser), 21600);
+  audit_(session, 'UPLOAD_AVATAR', 'USER', user.userId, {});
+  return ok_({ message: 'Đã cập nhật ảnh đại diện.', user: sessionUser, avatarUrl: avatarUrl });
+}
+
 function apiChangeMyPassword_(token, oldPasswordSha256, oldPasswordRaw, newPasswordRaw, newPasswordSha256) {
   const actor = requireLogin_(token);
   const users = readObjects_(SV5T.SHEETS.USERS);
@@ -1254,15 +1368,7 @@ function apiDeleteApplication_(token, applicationId) {
 
   const app = getApplication_(applicationId);
 
-  // Đưa thư mục minh chứng hồ sơ vào thùng rác nếu có.
-  if (app.driveFolderId) {
-    try { DriveApp.getFolderById(app.driveFolderId).setTrashed(true); } catch (err) {}
-  }
-
-  deleteRowsWhere_(SV5T.SHEETS.REVIEWS, function (r) { return r.applicationId === applicationId; });
-  deleteRowsWhere_(SV5T.SHEETS.EVIDENCES, function (r) { return r.applicationId === applicationId; });
-  deleteRowsWhere_(SV5T.SHEETS.CLAIMS, function (r) { return r.applicationId === applicationId; });
-  deleteRowsWhere_(SV5T.SHEETS.APPLICATIONS, function (r) { return r.applicationId === applicationId; });
+  purgeApplicationData_(app);
 
   audit_(actor, 'DELETE_APPLICATION', 'APPLICATION', applicationId, {});
   return ok_({ message: 'Đã xóa hồ sơ và dữ liệu minh chứng liên quan.', applicationId: applicationId });
@@ -2091,6 +2197,7 @@ function publicUser_(u) {
     unionPosition: u.unionPosition,
     yearOfStudy: u.yearOfStudy,
     active: bool_(u.active),
+    avatarUrl: clean_(u.avatarUrl),
     createdAt: toIso_(u.createdAt),
     updatedAt: toIso_(u.updatedAt),
     lastLoginAt: toIso_(u.lastLoginAt)

@@ -105,8 +105,20 @@
             <div class="field col-4"><label>Số điện thoại <span class="req">*</span></label><input id="app_phone" placeholder="09xxxxxxxx"></div>
             <div class="field col-8"><label>Ghi chú</label><input id="app_studentNote" placeholder="Ghi chú thêm"></div>
           </div>
-          <div class="alert info"><b>Minh chứng:</b> Tối đa <b>5 PDF</b> và nhiều <b>ảnh</b> mỗi tiêu chí.</div>
-          <div class="form-scroll-note">Bảng tiêu chí có thể kéo ngang trên màn hình nhỏ.</div>
+          <div class="personal-info-actions toolbar">
+            <button type="button" class="btn secondary" id="btnEditPersonal" onclick="togglePersonalEdit(true)">Sửa thông tin</button>
+            <button type="button" class="btn secondary" id="btnCancelPersonal" onclick="cancelPersonalEdit()">Hủy sửa</button>
+            <button type="button" class="btn primary" id="btnSavePersonal" onclick="savePersonalInfo()">Lưu thông tin cá nhân</button>
+          </div>
+          <div id="personalInfoResult"></div>
+          <div id="editWindowBanner" class="edit-window-banner" style="display:none">
+            <div class="edit-window-text" id="editWindowText"></div>
+            <div class="toolbar edit-window-actions">
+              <button type="button" class="btn secondary" id="btnEditApplication" onclick="toggleApplicationEdit(true)">Sửa hồ sơ</button>
+              <button type="button" class="btn secondary" id="btnCancelApplicationEdit" onclick="cancelApplicationEdit()">Hủy sửa</button>
+              <button type="button" class="btn primary" id="btnSaveEvidence" onclick="saveApplication(false)">Lưu minh chứng</button>
+            </div>
+          </div>
           <div id="criteriaContainer"></div>
           <div class="toolbar">
             <button class="btn secondary" id="btnSaveDraft" onclick="saveApplication(false)">Lưu nháp</button>
