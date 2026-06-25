@@ -81,7 +81,17 @@
     .order-cell{text-align:center;color:#475569;font-weight:700;white-space:nowrap}
     .criterion-title{font-weight:700;color:#111827}.criterion-help{margin-top:4px;color:var(--muted);font-size:12px}
     .auto-note{background:var(--blueBg);border:1px solid #bae6fd;border-radius:8px;padding:8px;color:#075985}
-    .evidence-panel{border:1px dashed #94a3b8;background:#fcfdff;border-radius:10px;padding:10px;min-width:300px}
+    .evidence-panel{border:1px dashed #cbd5e1;background:#fcfdff;border-radius:10px;padding:12px;min-width:320px}
+    .evidence-upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .ev-kind-box{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff}
+    .ev-kind-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px}
+    .ev-kind-head b{color:var(--navy)}
+    .file-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
+    .file-tag.pdf{background:#fef2f2;color:#991b1b}
+    .file-tag.image{background:#ecfdf5;color:#065f46}
+    .review-level-box{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#fafbfc}
+    .review-level-label{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+    .level-col-head{font-size:11px;line-height:1.3}
     .evidence-tools{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
     .evidence-row{border:1px solid #dbe3ef;background:#fff;border-radius:10px;padding:10px;margin:8px 0}
     .evidence-row-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
@@ -253,9 +263,7 @@
     .danger-zone h3{margin:0 0 8px;color:#991b1b}
     .account-actions{display:flex;gap:6px;flex-wrap:wrap}
     .mini-note{font-size:12px;color:var(--muted);margin-top:4px}
-    @media(max-width:900px){
-      .quick-cards{grid-template-columns:1fr 1fr}
-    }
+@media(max-width:900px){.evidence-upload-grid{grid-template-columns:1fr}}
     @media(max-width:560px){
       .quick-cards{grid-template-columns:1fr}
     }
@@ -404,7 +412,7 @@
       hyphens:none !important;
     }
     .table-scroll .criteria-table{
-      min-width:1870px;
+      min-width:2400px;
     }
     @media(max-width:720px){
       .table-scroll .criteria-table{min-width:1580px}
@@ -486,7 +494,7 @@
               <div class="field col-4"><label>Số điện thoại <span class="req">*</span></label><input id="app_phone" placeholder="09xxxxxxxx"></div>
               <div class="field col-8"><label>Ghi chú hồ sơ</label><input id="app_studentNote" placeholder="Ghi chú thêm nếu có"></div>
             </div>
-            <div class="alert info"><b>Quy trình minh chứng:</b> Chọn tiêu chí nhỏ → bấm “Thêm minh chứng” → nhập tên minh chứng → chọn file tài liệu tương ứng. Hệ thống sẽ hiển thị STT tài liệu và mã minh chứng liên quan theo từng tiêu chí.</div>
+            <div class="alert info"><b>Quy trình minh chứng:</b> Mỗi tiêu chí có thể nộp tối đa <b>5 file PDF</b> và nhiều <b>ảnh</b> (JPG, PNG...). Nhập tên minh chứng rồi chọn đúng loại file.</div>
             <div class="form-scroll-note">Bảng tiêu chí có thể kéo ngang trên điện thoại/màn hình nhỏ để xem đầy đủ cột minh chứng.</div>
             <div id="criteriaContainer"></div>
             <div class="toolbar">
@@ -521,7 +529,8 @@
               <input id="filterQ" placeholder="Tìm MSSV, họ tên, lớp, khoa...">
               <select id="filterStatus"><option value="">Tất cả trạng thái</option><option value="SUBMITTED">Đã nộp</option><option value="NEED_SUPPLEMENT">Cần bổ sung</option><option value="FINALIZED">Đã chốt</option></select>
               <button class="btn primary" onclick="loadApplications()">Lọc</button>
-              <button class="btn secondary" onclick="exportResults()">Xuất kết quả</button>
+              <button class="btn secondary" onclick="exportResults()">Xuất Excel</button>
+              <button class="btn primary" onclick="exportResultsPdf()">Xuất PDF</button>
             </div>
             <div id="applicationList"></div>
           </div>
@@ -540,7 +549,7 @@
 <script>
 // Dán link Web App /exec của Google Apps Script vào đây trước khi upload lên GitHub Pages.
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyoMap8EQZS2KtQty0ZgJ4SGLUjsDyd6AJ1z-D9GH0tJYjugG0XsBOvhjYIv-t3F8jmoA/exec';
-const APP_BUILD = '20260625-no-khoa';
+const APP_BUILD = '20260625-evidence-levels';
 
 let API_URL = DEFAULT_API_URL;
 try {
@@ -555,7 +564,7 @@ try {
 const APP = {
   token: localStorage.getItem('SV5T_TOKEN') || '',
   user: JSON.parse(localStorage.getItem('SV5T_USER') || 'null'),
-  criteria: [], groupedCriteria: [], myApp: null, maxFileMb: 8
+  criteria: [], groupedCriteria: [], myApp: null, maxFileMb: 8, maxPdfPerCriterion: 5, maxImagePerCriterion: 30
 };
 
 
@@ -633,6 +642,8 @@ async function testApi(){
   try{
     const res=await jsonp('bootstrap');
     APP.criteria=res.criteria||[]; APP.groupedCriteria=res.groupedCriteria||[]; APP.maxFileMb=Number(res.maxFileMb||8);
+    APP.maxPdfPerCriterion=Number(res.maxPdfPerCriterion||5);
+    APP.maxImagePerCriterion=Number(res.maxImagePerCriterion||30);
     applyBrandingFromApi(res);
     renderCriteriaTable();
     const box=document.getElementById('apiStatusBox'); if(box){box.style.display='none';box.innerHTML='';}
@@ -763,6 +774,36 @@ function fillApplication(res){
   app_schoolYear.value=a.schoolYear||app_schoolYear.value||'';
   app_studentNote.value=a.studentNote||'';
 }
+function getItemLevel(st, level){
+  if(!st) return {status:'', comment:''};
+  if(level==='CLUB') return {status:st.status, comment:st.reviewComment||st.reason||''};
+  if(level==='PROVINCE') return {status:st.provinceStatus, comment:st.provinceComment||''};
+  if(level==='CENTRAL') return {status:st.centralStatus, comment:st.centralComment||''};
+  return {status:'', comment:''};
+}
+function renderLevelResultCell(st, level){
+  const lv=getItemLevel(st, level);
+  if(!lv.status) return '<td class="result-cell"><span class="pill warn">Chờ duyệt</span></td>';
+  if(level==='CLUB' && (st.itemType==='REQUIRED_AUTO' || !st.itemType) && st.status==='PASS' && !st.reviewComment && st.reason) return `<td class="result-cell">${badge(st.status)}</td>`;
+  return `<td class="result-cell">${badge(lv.status)}</td>`;
+}
+function renderLevelReasonCell(st, level){
+  const lv=getItemLevel(st, level);
+  const comment=lv.comment;
+  const need=level==='CLUB' && st && (st.status==='FAIL' || st.status==='NEED_MORE');
+  return `<td class="reason-cell">${comment ? esc(comment) : '<span class="reason-empty">Chưa có</span>'}${need ? '<div class="supplement-hint">Bạn có thể bổ sung minh chứng mới theo lý do này.</div>' : ''}</td>`;
+}
+function renderAllLevelCells(st){
+  return renderLevelResultCell(st,'CLUB')+renderLevelReasonCell(st,'CLUB')+renderLevelResultCell(st,'PROVINCE')+renderLevelReasonCell(st,'PROVINCE')+renderLevelResultCell(st,'CENTRAL')+renderLevelReasonCell(st,'CENTRAL');
+}
+function levelLabel(level){
+  if(level==='PROVINCE') return 'Cấp Tỉnh';
+  if(level==='CENTRAL') return 'Cấp Trung ương';
+  return 'Cấp CLB';
+}
+function fileKindOf(f){
+  return String(f.fileKind||'').toUpperCase()==='IMAGE' ? 'IMAGE' : 'PDF';
+}
 function renderCriteriaTable(existing){
   if(!APP.groupedCriteria.length)return;
   const ev={}, itemStatus={};
@@ -771,7 +812,7 @@ function renderCriteriaTable(existing){
     (existing.groups||[]).forEach(g=>(g.items||[]).forEach(i=>itemStatus[i.criterionId]=i));
   }
 
-  let html = '<div class="table-scroll"><table class="criteria-table"><thead><tr><th>STT</th><th>Tiêu chí lớn</th><th>Tiêu chí nhỏ / điều kiện</th><th>Minh chứng yêu cầu</th><th>Tài liệu minh chứng</th><th>Kết quả</th><th>Lý do</th></tr></thead><tbody>';
+  let html = '<div class="table-scroll"><table class="criteria-table"><thead><tr><th>STT</th><th>Tiêu chí lớn</th><th>Tiêu chí nhỏ / điều kiện</th><th>Minh chứng yêu cầu</th><th>Tài liệu minh chứng</th><th class="level-col-head">KQ<br>CLB</th><th class="level-col-head">Lý do<br>CLB</th><th class="level-col-head">KQ<br>Tỉnh</th><th class="level-col-head">Lý do<br>Tỉnh</th><th class="level-col-head">KQ<br>TW</th><th class="level-col-head">Lý do<br>TW</th></tr></thead><tbody>';
 
   APP.groupedCriteria.forEach((g,gi)=>{
     const items = g.items || [];
@@ -792,18 +833,17 @@ function renderCriteriaTable(existing){
     }
 
     if(requiredItems.length){
-      html += openRow() + `<td colspan="5"><div class="criteria-section-title">Các tiêu chí bắt buộc</div></td></tr>`;
+      html += openRow() + `<td colspan="9"><div class="criteria-section-title">Các tiêu chí bắt buộc</div></td></tr>`;
       requiredItems.forEach(item=>{
         const files=ev[item.criterionId]||[], st=itemStatus[item.criterionId];
         html += openRow();
         if(item.itemType==='REQUIRED_AUTO'){
           html += `<td><span class="criterion-title raw-criterion">${esc(item.label)}</span></td>`;
-          html += `<td><div class="auto-note">Hệ thống tự kiểm tra từ dữ liệu hồ sơ.</div></td><td><span class="muted">Không yêu cầu sinh viên tải minh chứng tại mục này.</span></td><td class="result-cell">${st?badge(st.status):'<span class="pill navy">Tự động</span>'}</td><td class="reason-cell">${st&&st.reason?esc(st.reason):'<span class="reason-empty">Không có</span>'}</td>`;
+          html += `<td><div class="auto-note">Hệ thống tự kiểm tra từ dữ liệu hồ sơ.</div></td><td><span class="muted">Không yêu cầu sinh viên tải minh chứng tại mục này.</span></td>${renderAllLevelCells(st)}`;
         }else{
           html += `<td><span class="criterion-title raw-criterion">${esc(item.label)}</span></td>`;
           html += `<td><b>Yêu cầu:</b><br><span class="muted">${esc(item.sourceText||'Tải giấy chứng nhận/xác nhận/danh sách minh chứng phù hợp với tiêu chí.')}</span></td>`;
-          html += `<td>${renderEvidenceCell(item,files,st)}</td>`;
-          html += `<td class="result-cell">${st?badge(st.status):'<span class="pill warn">Chưa duyệt</span>'}</td><td class="reason-cell">${renderReasonCell(st)}</td>`;
+          html += `<td>${renderEvidenceCell(item,files,st)}</td>${renderAllLevelCells(st)}`;
         }
         html += '</tr>';
       });
@@ -813,20 +853,19 @@ function renderCriteriaTable(existing){
       const label = optionNeed <= 1
         ? 'Đạt thêm 01 trong các tiêu chí sau:'
         : `Đạt tối thiểu ${optionNeed} trong các tiêu chí sau:`;
-      html += openRow() + `<td colspan="5"><div class="criteria-section-title">${label}</div></td></tr>`;
+      html += openRow() + `<td colspan="9"><div class="criteria-section-title">${label}</div></td></tr>`;
       optionItems.forEach((item, idx)=>{
         const files=ev[item.criterionId]||[], st=itemStatus[item.criterionId];
         html += openRow();
         html += `<td><span class="criterion-title raw-criterion">${idx+1}. ${esc(item.label)}</span></td>`;
         html += `<td><b>Yêu cầu:</b><br><span class="muted">${esc(item.sourceText||'Tải giấy chứng nhận/xác nhận/danh sách minh chứng phù hợp với tiêu chí.')}</span></td>`;
-        html += `<td>${renderEvidenceCell(item,files,st)}</td>`;
-          html += `<td class="result-cell">${st?badge(st.status):'<span class="pill warn">Chưa duyệt</span>'}</td><td class="reason-cell">${renderReasonCell(st)}</td>`;
+        html += `<td>${renderEvidenceCell(item,files,st)}</td>${renderAllLevelCells(st)}`;
         html += '</tr>';
       });
     }
 
     if(firstRow){
-      html += `<tr><td class="order-cell">${gi+1}</td><td class="group-cell"><div class="group-label">${esc(displayGroupName(g.groupName))}</div></td><td colspan="5"><span class="muted">Chưa có tiêu chí.</span></td></tr>`;
+      html += `<tr><td class="order-cell">${gi+1}</td><td class="group-cell"><div class="group-label">${esc(displayGroupName(g.groupName))}</div></td><td colspan="9"><span class="muted">Chưa có tiêu chí.</span></td></tr>`;
     }
   });
 
@@ -848,41 +887,95 @@ function canAddEvidenceForCriterion(st){
   if(app.status === 'NEED_SUPPLEMENT') return !!st && (st.status === 'FAIL' || st.status === 'NEED_MORE');
   return false;
 }
+function renderEvidenceList(files){
+  if(!files.length) return '<div class="muted">Chưa có tài liệu minh chứng.</div>';
+  const pdfs=files.filter(f=>fileKindOf(f)==='PDF');
+  const imgs=files.filter(f=>fileKindOf(f)==='IMAGE');
+  const renderList=(list,tag,label)=>list.length?`<div class="muted" style="margin-top:8px"><b>${label} (${list.length})</b></div><ul class="existing-files">${list.sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0)).map((f,i)=>`<li><span class="file-tag ${tag}">${tag.toUpperCase()}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span></li>`).join('')}</ul>`:'';
+  return `<div class="muted"><b>Minh chứng đã tải:</b></div>${renderList(pdfs,'pdf','PDF')}${renderList(imgs,'image','Ảnh')}`;
+}
+function countExistingKind(criterionId, kind){
+  return (APP.myApp?.evidences||[]).filter(e=>e.criterionId===criterionId && fileKindOf(e)===kind).length;
+}
+function countPendingKind(criterionId, kind){
+  return document.querySelectorAll(`.evidence-row[data-criterion="${CSS.escape(criterionId)}"][data-kind="${kind}"]`).length;
+}
 function renderEvidenceCell(item,files,st){
   const app = APP.myApp && APP.myApp.application ? APP.myApp.application : null;
   const canAdd = canAddEvidenceForCriterion(st);
-  const existing = files.length ? `<div class="muted"><b>Minh chứng đã tải:</b></div><ul class="existing-files">${files.sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0)).map((f,i)=>`<li><b>TL ${i+1}</b> - <span class="pill blue">MC ${f.evidenceOrder||i+1}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span></li>`).join('')}</ul>` : '<div class="muted">Chưa có tài liệu minh chứng.</div>';
+  const existing = renderEvidenceList(files);
   let action = '';
   if(canAdd){
-    const label = app && app.status === 'NEED_SUPPLEMENT' ? '+ Bổ sung minh chứng' : '+ Thêm minh chứng';
-    action = `<div class="evidence-tools" style="margin-top:10px"><span class="muted">Tài liệu mới</span><button class="btn blue small" onclick="addEvidenceRow('${esc(item.criterionId)}')">${label}</button></div><div id="evRows_${esc(item.criterionId)}"></div>`;
+    const pdfLeft = Math.max(0, APP.maxPdfPerCriterion - countExistingKind(item.criterionId,'PDF') - countPendingKind(item.criterionId,'PDF'));
+    action = `<div class="evidence-upload-grid">
+      <div class="ev-kind-box">
+        <div class="ev-kind-head"><b>PDF</b><span class="muted">Còn ${pdfLeft}/${APP.maxPdfPerCriterion}</span></div>
+        <button type="button" class="btn blue small" ${pdfLeft?`onclick="addEvidenceRow('${esc(item.criterionId)}','PDF')"`:'disabled'}>+ Thêm PDF</button>
+        <div id="evRows_${esc(item.criterionId)}_PDF"></div>
+      </div>
+      <div class="ev-kind-box">
+        <div class="ev-kind-head"><b>Ảnh</b><span class="muted">JPG, PNG, WEBP...</span></div>
+        <button type="button" class="btn blue small" onclick="pickImageFiles('${esc(item.criterionId)}')">+ Chọn nhiều ảnh</button>
+        <button type="button" class="btn secondary small" onclick="addEvidenceRow('${esc(item.criterionId)}','IMAGE')">+ Thêm 1 ảnh</button>
+        <div id="evRows_${esc(item.criterionId)}_IMAGE"></div>
+      </div>
+    </div>`;
   }else{
     let msg = 'Hồ sơ đang khóa tải minh chứng.';
     if(app && app.status === 'SUBMITTED') msg = 'Đã nộp hồ sơ, chờ người chấm duyệt.';
     if(app && app.status === 'FINALIZED') msg = 'Hồ sơ đã chốt kết quả, không thể bổ sung.';
     if(app && app.status === 'NEED_SUPPLEMENT') msg = 'Chỉ được bổ sung cho tiêu chí bị Không đạt hoặc Cần bổ sung.';
-    action = `<div class="locked-evidence" style="margin-top:10px">${msg}</div><div id="evRows_${esc(item.criterionId)}"></div>`;
+    action = `<div class="locked-evidence" style="margin-top:10px">${msg}</div>`;
   }
   return `<div class="evidence-panel">${existing}${action}</div>`;
 }
 
-function addEvidenceRow(criterionId){
-  const box=document.getElementById('evRows_'+criterionId);
+function addEvidenceRow(criterionId, fileKind='PDF'){
+  if(fileKind==='PDF'){
+    const left = APP.maxPdfPerCriterion - countExistingKind(criterionId,'PDF') - countPendingKind(criterionId,'PDF');
+    if(left <= 0){ alert('Đã đủ '+APP.maxPdfPerCriterion+' file PDF cho tiêu chí này.'); return; }
+  }
+  const box=document.getElementById('evRows_'+criterionId+'_'+fileKind);
+  if(!box) return;
   const index=box.querySelectorAll('.evidence-row').length+1;
   const existingCount=(APP.myApp?.evidences||[]).filter(e=>e.criterionId===criterionId).length;
   const displayNo=existingCount+index;
   const row=document.createElement('div');
   row.className='evidence-row';
   row.dataset.criterion=criterionId;
+  row.dataset.kind=fileKind;
   row.dataset.order=displayNo;
-  row.innerHTML=`<div class="evidence-row-head"><span class="mc-badge">Minh chứng ${displayNo}</span><button type="button" class="btn secondary small" onclick="this.closest('.evidence-row').remove()">Xóa</button></div>
+  const accept=fileKind==='PDF'?'.pdf,application/pdf':'image/*';
+  row.innerHTML=`<div class="evidence-row-head"><span class="mc-badge">${fileKind==='PDF'?'PDF':'Ảnh'} ${index}</span><button type="button" class="btn secondary small" onclick="this.closest('.evidence-row').remove()">Xóa</button></div>
     <label>Tên minh chứng <span class="req">*</span></label>
-    <input class="ev-title" placeholder="VD: Giấy chứng nhận hoạt động tình nguyện hè 2025" oninput="enableEvidenceFile(this)">
-    <label style="margin-top:8px">Tài liệu tương ứng</label>
-    <input class="ev-file file-disabled" type="file" disabled onchange="previewEvidenceFile(this)">
-    <div class="muted ev-preview">Nhập tên minh chứng trước, sau đó mới chọn file tài liệu.</div>`;
+    <input class="ev-title" placeholder="${fileKind==='PDF'?'VD: Bảng điểm PDF':'VD: Ảnh hoạt động tình nguyện'}" oninput="enableEvidenceFile(this)">
+    <label style="margin-top:8px">File ${fileKind==='PDF'?'PDF':'ảnh'}</label>
+    <input class="ev-file file-disabled" type="file" accept="${accept}" disabled onchange="previewEvidenceFile(this)">
+    <div class="muted ev-preview">Nhập tên minh chứng trước, sau đó chọn file.</div>`;
   box.appendChild(row);
-  const cb=document.getElementById('claim_'+criterionId); if(cb) cb.checked=true;
+}
+function pickImageFiles(criterionId){
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  input.multiple=true;
+  input.onchange=()=>{
+    Array.from(input.files||[]).forEach(file=>{
+      addEvidenceRow(criterionId,'IMAGE');
+      const box=document.getElementById('evRows_'+criterionId+'_IMAGE');
+      const row=box.lastElementChild;
+      if(!row) return;
+      const title=row.querySelector('.ev-title');
+      title.value=file.name.replace(/\.[^.]+$/,'');
+      const fileInput=row.querySelector('.ev-file');
+      const dt=new DataTransfer();
+      dt.items.add(file);
+      fileInput.files=dt.files;
+      enableEvidenceFile(title);
+      previewEvidenceFile(fileInput);
+    });
+  };
+  input.click();
 }
 function enableEvidenceFile(input){
   const row=input.closest('.evidence-row');
@@ -901,27 +994,46 @@ function previewEvidenceFile(input){
 async function collectFiles(){
   const rows=Array.from(document.querySelectorAll('.evidence-row'));
   const out=[];
+  const pendingPdf={};
+  const pendingImage={};
   for(const row of rows){
     const criterionId=row.dataset.criterion;
+    const fileKind=row.dataset.kind||'PDF';
     const title=row.querySelector('.ev-title').value.trim();
     const fileInput=row.querySelector('.ev-file');
     const file=fileInput.files&&fileInput.files[0];
     if(!title && !file) continue;
     if(!title) throw new Error('Chưa nhập tên minh chứng.');
-    if(!file) throw new Error('Minh chứng "'+title+'" chưa chọn file tài liệu.');
+    if(!file) throw new Error('Minh chứng "'+title+'" chưa chọn file.');
     if(file.size>APP.maxFileMb*1024*1024) throw new Error('File '+file.name+' vượt quá '+APP.maxFileMb+'MB.');
+    if(fileKind==='PDF'){
+      if(file.type && file.type!=='application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) throw new Error('File "'+file.name+'" không phải PDF.');
+      pendingPdf[criterionId]=(pendingPdf[criterionId]||0)+1;
+    }else{
+      if(file.type && file.type.indexOf('image/')!==0) throw new Error('File "'+file.name+'" không phải ảnh.');
+      pendingImage[criterionId]=(pendingImage[criterionId]||0)+1;
+    }
     out.push({
       criterionId:criterionId,
+      fileKind:fileKind,
       evidenceOrder:Number(row.dataset.order||out.length+1),
-      criterionEvidenceNo:criterionId+'-'+(row.dataset.order||out.length+1),
+      criterionEvidenceNo:criterionId+'-'+fileKind+'-'+(row.dataset.order||out.length+1),
       evidenceTitle:title,
       fileName:file.name,
-      mimeType:file.type||'application/octet-stream',
+      mimeType:file.type||(fileKind==='PDF'?'application/pdf':'image/jpeg'),
       size:file.size,
       base64:await fileAsDataURL(file),
       note:title
     });
   }
+  Object.keys(pendingPdf).forEach(cid=>{
+    const total=countExistingKind(cid,'PDF')+pendingPdf[cid];
+    if(total>APP.maxPdfPerCriterion) throw new Error('Tiêu chí vượt quá '+APP.maxPdfPerCriterion+' file PDF.');
+  });
+  Object.keys(pendingImage).forEach(cid=>{
+    const total=countExistingKind(cid,'IMAGE')+pendingImage[cid];
+    if(total>APP.maxImagePerCriterion) throw new Error('Tiêu chí vượt quá '+APP.maxImagePerCriterion+' ảnh.');
+  });
   return out;
 }
 function collectClaims(){
@@ -1090,10 +1202,26 @@ async function loadApplications(){
 async function openDetail(id){
   try{showLoading(true); const r=await jsonp('applicationDetail',{token:APP.token,applicationId:id}); detailBox.style.display='block'; detailBox.innerHTML=renderDetailTable(r); detailBox.scrollIntoView({behavior:'smooth'});}catch(e){alert(e.message)}finally{showLoading(false)}
 }
+function renderReviewBlock(appId, critId, level, item){
+  const lv=getItemLevel(item, level);
+  const canReview=item.itemType==='OPTION_EVIDENCE' || item.itemType==='REQUIRED_EVIDENCE';
+  if(!canReview) return '';
+  const cmtId='cmt_'+level+'_'+critId;
+  return `<div class="review-level-box">
+    <div class="review-level-label">${levelLabel(level)} · ${badge(lv.status||'PENDING')}</div>
+    <label>Nhận xét</label>
+    <input id="${cmtId}" value="${esc(lv.comment||'')}">
+    <div class="toolbar" style="margin-top:8px">
+      <button class="btn ok small" onclick="review('${esc(appId)}','${esc(critId)}','PASS','${level}')">Đạt</button>
+      <button class="btn bad small" onclick="review('${esc(appId)}','${esc(critId)}','FAIL','${level}')">Không đạt</button>
+      <button class="btn warn small" onclick="review('${esc(appId)}','${esc(critId)}','NEED_MORE','${level}')">Yêu cầu bổ sung</button>
+    </div>
+  </div>`;
+}
 function renderDetailTable(r){
   const a=r.application, ev={}; (r.evidences||[]).forEach(e=>(ev[e.criterionId]??=[]).push(e));
-  let html=`<div class="box-title"><div><h2>Chấm hồ sơ ${esc(a.applicationId)}</h2><div class="desc">${esc(a.fullName)} - ${esc(a.studentId||'')} - ${esc(a.className)}</div></div><button class="btn secondary small" onclick="detailBox.style.display='none'">Đóng</button></div><div class="alert info">Tóm tắt: ${badge(r.summary.overallPass?'ĐẠT':'KHÔNG ĐẠT')} Nhóm đạt <b>${r.summary.passGroups}/${r.summary.totalRequiredGroups}</b></div>`;
-  html += '<div class="table-scroll"><table class="criteria-table"><thead><tr><th>STT</th><th>Tiêu chí lớn</th><th>Tiêu chí nhỏ</th><th>Tài liệu minh chứng</th><th>Kết quả</th><th>Lý do</th><th>Chấm duyệt</th></tr></thead><tbody>';
+  let html=`<div class="box-title"><div><h2>Chấm hồ sơ ${esc(a.applicationId)}</h2><div class="desc">${esc(a.fullName)} - ${esc(a.studentId||'')} - ${esc(a.className)}</div></div><button class="btn secondary small" onclick="detailBox.style.display='none'">Đóng</button></div><div class="alert info">Tóm tắt CLB: ${badge(r.summary.overallPass?'ĐẠT':'KHÔNG ĐẠT')} Nhóm đạt <b>${r.summary.passGroups}/${r.summary.totalRequiredGroups}</b></div>`;
+  html += '<div class="table-scroll"><table class="criteria-table"><thead><tr><th>STT</th><th>Tiêu chí lớn</th><th>Tiêu chí nhỏ</th><th>Tài liệu minh chứng</th><th class="level-col-head">KQ CLB</th><th class="level-col-head">Lý do CLB</th><th class="level-col-head">KQ Tỉnh</th><th class="level-col-head">Lý do Tỉnh</th><th class="level-col-head">KQ TW</th><th class="level-col-head">Lý do TW</th><th>Chấm duyệt</th></tr></thead><tbody>';
 
   (r.groups||[]).forEach((g,gi)=>{
     const items=g.items||[];
@@ -1114,11 +1242,11 @@ function renderDetailTable(r){
     function itemRow(item, idxPrefix){
       const files=(ev[item.criterionId]||[]).sort((a,b)=>Number(a.evidenceOrder||0)-Number(b.evidenceOrder||0));
       let row=openRow();
-      row += `<td><div class="criterion-title">${idxPrefix ? idxPrefix+'. ' : ''}${esc(item.label)}</div><div class="criterion-help">${esc(item.reason||'')}</div></td>`;
-      row += `<td>${files.length?`<ol>${files.map((f,i)=>`<li><b>TL ${i+1}</b> - <span class="pill blue">MC ${f.evidenceOrder||i+1}</span> <a href="${esc(f.fileUrl)}" target="_blank">${esc(f.evidenceTitle||f.fileName)}</a> <span class="muted">(${moneySize(f.sizeBytes)})</span></li>`).join('')}</ol>`:'<div class="alert warn">Chưa có minh chứng.</div>'}</td>`;
-      row += `<td class="result-cell">${badge(item.status)}</td><td class="reason-cell">${renderReasonCell(item)}</td>`;
+      row += `<td><div class="criterion-title">${idxPrefix ? idxPrefix+'. ' : ''}${esc(item.label)}</div></td>`;
+      row += `<td>${files.length?renderEvidenceList(files):'<div class="alert warn">Chưa có minh chứng.</div>'}</td>`;
+      row += renderLevelResultCell(item,'CLUB')+renderLevelReasonCell(item,'CLUB')+renderLevelResultCell(item,'PROVINCE')+renderLevelReasonCell(item,'PROVINCE')+renderLevelResultCell(item,'CENTRAL')+renderLevelReasonCell(item,'CENTRAL');
       if(item.itemType==='OPTION_EVIDENCE' || item.itemType==='REQUIRED_EVIDENCE'){
-        row += `<td><label>Nhận xét</label><input id="cmt_${esc(item.criterionId)}" value="${esc(item.reviewComment||'')}"><div class="toolbar" style="margin-top:8px"><button class="btn ok small" onclick="review('${esc(a.applicationId)}','${esc(item.criterionId)}','PASS')">Đạt</button><button class="btn bad small" onclick="review('${esc(a.applicationId)}','${esc(item.criterionId)}','FAIL')">Không đạt</button><button class="btn warn small" onclick="review('${esc(a.applicationId)}','${esc(item.criterionId)}','NEED_MORE')">Yêu cầu bổ sung</button></div></td>`;
+        row += `<td>${renderReviewBlock(a.applicationId, item.criterionId, 'CLUB', item)}${renderReviewBlock(a.applicationId, item.criterionId, 'PROVINCE', item)}${renderReviewBlock(a.applicationId, item.criterionId, 'CENTRAL', item)}</td>`;
       }else{
         row += '<td><span class="muted">Tiêu chí tự động</span></td>';
       }
@@ -1126,12 +1254,12 @@ function renderDetailTable(r){
     }
 
     if(requiredItems.length){
-      html += openRow()+`<td colspan="5"><div class="criteria-section-title">Các tiêu chí bắt buộc</div></td></tr>`;
+      html += openRow()+`<td colspan="9"><div class="criteria-section-title">Các tiêu chí bắt buộc</div></td></tr>`;
       requiredItems.forEach(item=>{ html += itemRow(item,''); });
     }
     if(optionItems.length){
       const label=optionNeed<=1?'Đạt thêm 01 trong các tiêu chí sau:':`Đạt tối thiểu ${optionNeed} trong các tiêu chí sau:`;
-      html += openRow()+`<td colspan="5"><div class="criteria-section-title">${label}</div></td></tr>`;
+      html += openRow()+`<td colspan="9"><div class="criteria-section-title">${label}</div></td></tr>`;
       optionItems.forEach((item,i)=>{ html += itemRow(item,String(i+1)); });
     }
   });
@@ -1139,21 +1267,22 @@ function renderDetailTable(r){
   html += `</tbody></table></div><div class="box" style="margin-top:14px"><h3>Chốt kết quả</h3><label>Ghi chú</label><input id="finalNote_${esc(a.applicationId)}"><div class="toolbar" style="margin-top:10px"><button class="btn primary" onclick="finalize('${esc(a.applicationId)}','AUTO')">Chốt tự động</button><button class="btn ok" onclick="finalize('${esc(a.applicationId)}','PASS')">Chốt ĐẠT</button><button class="btn bad" onclick="finalize('${esc(a.applicationId)}','FAIL')">Chốt KHÔNG ĐẠT</button></div></div>`;
   return html;
 }
-async function review(appId,critId,status){
+async function review(appId,critId,status,level='CLUB'){
   try{
-    const comment = document.getElementById('cmt_'+critId)?.value.trim() || '';
+    const comment = document.getElementById('cmt_'+level+'_'+critId)?.value.trim() || '';
     if((status==='FAIL' || status==='NEED_MORE') && !comment){
       alert('Vui lòng ghi rõ lý do khi chấm Không đạt hoặc Yêu cầu bổ sung.');
       return;
     }
     showLoading(true);
-    await postApi('reviewCriterion',{token:APP.token,applicationId:appId,criterionId:critId,status,comment});
+    await postApi('reviewCriterion',{token:APP.token,applicationId:appId,criterionId:critId,status,comment,reviewLevel:level});
     await openDetail(appId);
     await loadDashboard();
   }catch(e){alert(e.message)}finally{showLoading(false)}
 }
 async function finalize(appId,mode){try{showLoading(true); await postApi('finalizeApplication',{token:APP.token,applicationId:appId,mode,note:document.getElementById('finalNote_'+appId)?.value||''}); await openDetail(appId); await loadDashboard()}catch(e){alert(e.message)}finally{showLoading(false)}}
 async function exportResults(){try{const r=await jsonp('exportResults',{token:APP.token}); window.open(r.url,'_blank')}catch(e){alert(e.message)}}
+async function exportResultsPdf(){try{showLoading(true); const r=await jsonp('exportResultsPdf',{token:APP.token}); window.open(r.url,'_blank')}catch(e){alert(e.message)}finally{showLoading(false)}}
 
 async function loadUsers(){if(APP.user.role!=='ADMIN')return; try{const r=await jsonp('listUsers',{token:APP.token}); userManageBox.style.display='block'; userManageBox.innerHTML=`<div class="box-title"><div><h2>Quản lý tài khoản</h2><div class="desc">Admin có thể tạo tài khoản, khóa/mở tài khoản, đổi mật khẩu hoặc chuyển về mật khẩu mặc định 123456.</div></div></div>
 <div class="field-grid">

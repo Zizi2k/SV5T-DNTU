@@ -55,6 +55,15 @@ const SV5T = {
     PASS: 'PASS',
     FAIL: 'FAIL',
     NEED_MORE: 'NEED_MORE'
+  },
+  REVIEW_LEVEL: {
+    CLUB: 'CLUB',
+    PROVINCE: 'PROVINCE',
+    CENTRAL: 'CENTRAL'
+  },
+  FILE_KIND: {
+    PDF: 'PDF',
+    IMAGE: 'IMAGE'
   }
 };
 
@@ -88,12 +97,12 @@ const HEADERS = {
   EVIDENCES: [
     'evidenceId', 'applicationId', 'criterionId', 'groupId',
     'evidenceOrder', 'criterionEvidenceNo', 'evidenceTitle',
-    'fileId', 'fileName', 'fileUrl', 'mimeType',
+    'fileKind', 'fileId', 'fileName', 'fileUrl', 'mimeType',
     'sizeBytes', 'uploadedBy', 'uploadedAt', 'note'
   ],
   REVIEWS: [
-    'reviewId', 'applicationId', 'criterionId', 'reviewerUserId',
-    'reviewerUsername', 'status', 'comment', 'reviewedAt'
+    'reviewId', 'applicationId', 'criterionId', 'reviewLevel',
+    'reviewerUserId', 'reviewerUsername', 'status', 'comment', 'reviewedAt'
   ],
   AUDIT_LOG: [
     'logId', 'actorUserId', 'actorUsername', 'action',
@@ -173,6 +182,8 @@ function routeGet_(action, p) {
       return apiListCriteria_(p.token);
     case 'exportResults':
       return apiExportResults_(p.token);
+    case 'exportResultsPdf':
+      return apiExportResultsPdf_(p.token);
     default:
       throw new Error('Action GET không hợp lệ: ' + action);
   }
@@ -346,6 +357,8 @@ function seedConfig_() {
     { key: 'ALLOW_REGISTER', value: 'TRUE', note: 'TRUE: cho phép sinh viên đăng ký tài khoản', updatedAt: new Date() },
     { key: 'ALLOW_SUBMIT', value: 'TRUE', note: 'TRUE: cho phép nộp/bổ sung hồ sơ', updatedAt: new Date() },
     { key: 'MAX_FILE_MB', value: '8', note: 'Giới hạn dung lượng mỗi file minh chứng', updatedAt: new Date() },
+    { key: 'MAX_PDF_PER_CRITERION', value: '5', note: 'Tối đa PDF mỗi tiêu chí', updatedAt: new Date() },
+    { key: 'MAX_IMAGE_PER_CRITERION', value: '30', note: 'Tối đa ảnh mỗi tiêu chí', updatedAt: new Date() },
     { key: 'SHARE_EVIDENCE_BY_LINK', value: 'TRUE', note: 'TRUE: minh chứng mở được bằng link', updatedAt: new Date() },
     { key: 'ORGANIZATION_LINE_1', value: 'HỘI SINH VIÊN VIỆT NAM', note: 'Dòng đơn vị 1', updatedAt: new Date() },
     { key: 'ORGANIZATION_LINE_2', value: 'TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI', note: 'Dòng đơn vị 2', updatedAt: new Date() },
@@ -461,6 +474,8 @@ function apiBootstrap_() {
     allowRegister: getConfigBool_('ALLOW_REGISTER', true),
     allowSubmit: getConfigBool_('ALLOW_SUBMIT', true),
     maxFileMb: Number(getConfig_('MAX_FILE_MB', '8')),
+    maxPdfPerCriterion: Number(getConfig_('MAX_PDF_PER_CRITERION', '5')),
+    maxImagePerCriterion: Number(getConfig_('MAX_IMAGE_PER_CRITERION', '30')),
     organizationLines: [
       getConfig_('ORGANIZATION_LINE_1', 'HỘI SINH VIÊN VIỆT NAM'),
       getConfig_('ORGANIZATION_LINE_2', 'TRƯỜNG ĐẠI HỌC CÔNG NGHỆ ĐỒNG NAI'),
@@ -725,7 +740,9 @@ function apiStudentSupplement_(token, claims, files) {
   });
   const needMap = {};
   reviews.forEach(function (r) {
-    if (r.status === SV5T.REVIEW.FAIL || r.status === SV5T.REVIEW.NEED_MORE) needMap[r.criterionId] = r;
+    if (r.applicationId === app.applicationId && normalizeReviewLevel_(r.reviewLevel) === SV5T.REVIEW_LEVEL.CLUB) {
+      if (r.status === SV5T.REVIEW.FAIL || r.status === SV5T.REVIEW.NEED_MORE) needMap[r.criterionId] = r;
+    }
   });
 
   const fileCriterionIds = {};
@@ -867,6 +884,7 @@ function apiReviewCriterion_(token, payload) {
   const user = requireRole_(token, [SV5T.ROLE.REVIEWER, SV5T.ROLE.ADMIN]);
   const applicationId = clean_(payload.applicationId);
   const criterionId = clean_(payload.criterionId);
+  const reviewLevel = normalizeReviewLevel_(payload.reviewLevel);
   const status = clean_(payload.status).toUpperCase();
   const comment = clean_(payload.comment);
 
@@ -894,14 +912,13 @@ function apiReviewCriterion_(token, payload) {
   }
 
   const reviews = readObjects_(SV5T.SHEETS.REVIEWS);
-  const existed = reviews.find(function (r) {
-    return r.applicationId === applicationId && r.criterionId === criterionId;
-  });
+  const existed = findReview_(reviews, applicationId, criterionId, reviewLevel);
 
   const reviewObj = {
     reviewId: existed ? existed.reviewId : Utilities.getUuid(),
     applicationId: applicationId,
     criterionId: criterionId,
+    reviewLevel: reviewLevel,
     reviewerUserId: user.userId,
     reviewerUsername: user.username,
     status: status,
@@ -913,9 +930,9 @@ function apiReviewCriterion_(token, payload) {
   else appendObjects_(SV5T.SHEETS.REVIEWS, [reviewObj]);
 
   let newStatus = String(app.status);
-  if (String(app.status) !== SV5T.APP_STATUS.FINALIZED) {
+  if (String(app.status) !== SV5T.APP_STATUS.FINALIZED && reviewLevel === SV5T.REVIEW_LEVEL.CLUB) {
     const latestReviews = readObjects_(SV5T.SHEETS.REVIEWS).filter(function (r) {
-      return r.applicationId === applicationId;
+      return r.applicationId === applicationId && normalizeReviewLevel_(r.reviewLevel) === SV5T.REVIEW_LEVEL.CLUB;
     });
     const hasNeedSupplement = latestReviews.some(function (r) {
       return r.status === SV5T.REVIEW.FAIL || r.status === SV5T.REVIEW.NEED_MORE;
@@ -926,9 +943,9 @@ function apiReviewCriterion_(token, payload) {
 
   const compute = computeApplication_(getApplication_(applicationId));
   saveComputed_(applicationId, compute);
-  audit_(user, 'REVIEW_CRITERION', 'CRITERION', criterionId, { applicationId: applicationId, status: status });
+  audit_(user, 'REVIEW_CRITERION', 'CRITERION', criterionId, { applicationId: applicationId, status: status, reviewLevel: reviewLevel });
 
-  return ok_({ message: 'Đã cập nhật kết quả duyệt tiêu chí.', summary: compute.summary });
+  return ok_({ message: 'Đã cập nhật kết quả duyệt tiêu chí (' + reviewLevelLabel_(reviewLevel) + ').', summary: compute.summary });
 }
 
 function apiFinalizeApplication_(token, payload) {
@@ -1244,10 +1261,11 @@ function apiExportResults_(token) {
 
   const sh = ss.getSheets()[0];
   sh.setName('Ket qua');
-  const headers = ['STT', 'Mã hồ sơ', 'MSSV', 'Họ tên', 'Email', 'SĐT', 'Khoa', 'Lớp', 'Năm học', 'Trạng thái', 'Kết quả cuối', 'Ghi chú', 'Ngày nộp', 'Ngày chốt'];
-  const rows = apps.map(function (a, i) {
-    return [i + 1, a.applicationId, a.studentId, a.fullName, a.email, a.phone, a.faculty, a.className, a.schoolYear, a.status, a.finalResult, a.finalNote, a.submittedAt, a.finalizedAt];
-  });
+  const headers = [
+    'STT', 'Mã hồ sơ', 'MSSV', 'Họ tên', 'Email', 'SĐT', 'Đơn vị', 'Lớp', 'Năm học',
+    'Trạng thái', 'Kết quả CLB', 'Nhóm đạt CLB', 'Tổng nhóm', 'Ghi chú', 'Ngày nộp', 'Ngày chốt'
+  ];
+  const rows = buildExportRows_();
 
   sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
   if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
@@ -1255,6 +1273,99 @@ function apiExportResults_(token) {
 
   audit_(user, 'EXPORT_RESULTS', 'SPREADSHEET', ss.getId(), {});
   return ok_({ url: ss.getUrl(), spreadsheetId: ss.getId(), name: name });
+}
+
+function buildExportRows_() {
+  const apps = readObjects_(SV5T.SHEETS.APPLICATIONS);
+  return apps.map(function (a, i) {
+    const compute = safeJson_(a.computedJson, {});
+    const summary = compute.summary || {};
+    return [
+      i + 1,
+      a.applicationId,
+      a.studentId,
+      a.fullName,
+      a.email,
+      a.phone,
+      a.faculty,
+      a.className,
+      a.schoolYear,
+      a.status,
+      a.finalResult,
+      summary.passGroups || '',
+      summary.totalRequiredGroups || '',
+      a.finalNote,
+      a.submittedAt,
+      a.finalizedAt
+    ];
+  });
+}
+
+function apiExportResultsPdf_(token) {
+  const user = requireRole_(token, [SV5T.ROLE.ADMIN]);
+  const exportFolder = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty(SV5T.PROP.EXPORT_ID));
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+  const name = 'KET_QUA_SV5T_' + stamp;
+
+  const ss = SpreadsheetApp.create(name);
+  const ssFile = DriveApp.getFileById(ss.getId());
+  exportFolder.addFile(ssFile);
+  try { DriveApp.getRootFolder().removeFile(ssFile); } catch (err) {}
+
+  const sh = ss.getSheets()[0];
+  sh.setName('Ket qua');
+  const headers = [
+    'STT', 'Mã hồ sơ', 'MSSV', 'Họ tên', 'Email', 'SĐT', 'Đơn vị', 'Lớp', 'Năm học',
+    'Trạng thái', 'Kết quả CLB', 'Nhóm đạt CLB', 'Tổng nhóm', 'Ghi chú', 'Ngày nộp', 'Ngày chốt'
+  ];
+  const rows = buildExportRows_();
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+  if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  sh.autoResizeColumns(1, headers.length);
+
+  const detail = ss.insertSheet('Chi tiet cap Tinh TW');
+  const dHeaders = ['Mã hồ sơ', 'Họ tên', 'Nhóm tiêu chí', 'Tiêu chí', 'KQ CLB', 'Lý do CLB', 'KQ Tỉnh', 'Lý do Tỉnh', 'KQ TW', 'Lý do TW'];
+  const dRows = [];
+  appsDetailRows_(dRows);
+  detail.getRange(1, 1, 1, dHeaders.length).setValues([dHeaders]).setFontWeight('bold');
+  if (dRows.length) detail.getRange(2, 1, dRows.length, dHeaders.length).setValues(dRows);
+  detail.autoResizeColumns(1, dHeaders.length);
+
+  SpreadsheetApp.flush();
+  const pdfBlob = ssFile.getAs(MimeType.PDF);
+  const pdfFile = exportFolder.createFile(pdfBlob).setName(name + '.pdf');
+  pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  audit_(user, 'EXPORT_RESULTS_PDF', 'PDF', pdfFile.getId(), { spreadsheetId: ss.getId() });
+  return ok_({
+    url: pdfFile.getUrl(),
+    pdfId: pdfFile.getId(),
+    spreadsheetUrl: ss.getUrl(),
+    name: pdfFile.getName()
+  });
+}
+
+function appsDetailRows_(outRows) {
+  const apps = readObjects_(SV5T.SHEETS.APPLICATIONS);
+  apps.forEach(function (a) {
+    const compute = computeApplication_(a);
+    (compute.groups || []).forEach(function (g) {
+      (g.items || []).forEach(function (item) {
+        outRows.push([
+          a.applicationId,
+          a.fullName,
+          g.groupName,
+          item.label,
+          reviewStatusLabel_(item.status),
+          item.reviewComment || item.reason || '',
+          reviewStatusLabel_(item.provinceStatus),
+          item.provinceComment || '',
+          reviewStatusLabel_(item.centralStatus),
+          item.centralComment || ''
+        ]);
+      });
+    });
+  });
 }
 
 /***********************
@@ -1267,7 +1378,56 @@ function computeApplication_(app) {
   const claims = readObjects_(SV5T.SHEETS.CLAIMS).filter(function (c) { return c.applicationId === app.applicationId; });
 
   const reviewMap = {};
-  reviews.forEach(function (r) { reviewMap[r.criterionId] = r; });
+  reviews.forEach(function (r) {
+    const level = normalizeReviewLevel_(r.reviewLevel);
+    if (!reviewMap[r.criterionId]) reviewMap[r.criterionId] = {};
+    reviewMap[r.criterionId][level] = r;
+  });
+
+  function getReviewLevel_(criterionId, level) {
+    const bucket = reviewMap[criterionId] || {};
+    return bucket[level] || null;
+  }
+
+  function buildItemReviewFields_(item, clubReview, evCount, claim) {
+    var status = SV5T.REVIEW.PENDING;
+    var reason = '';
+    if (item.itemType === 'REQUIRED_AUTO') {
+      var autoPass = evaluateRule_(item.rule, app);
+      status = autoPass ? SV5T.REVIEW.PASS : SV5T.REVIEW.FAIL;
+      reason = autoPass ? 'Tự động đạt theo dữ liệu hồ sơ.' : 'Chưa đạt theo dữ liệu hồ sơ.';
+    } else if (item.itemType === 'REQUIRED_EVIDENCE') {
+      if (clubReview) {
+        status = clubReview.status || SV5T.REVIEW.PENDING;
+        reason = clubReview.comment || '';
+      } else if (evCount > 0) {
+        status = SV5T.REVIEW.PENDING;
+        reason = 'Đã nộp minh chứng bắt buộc, chờ người chấm duyệt.';
+      } else {
+        status = SV5T.REVIEW.FAIL;
+        reason = 'Tiêu chí bắt buộc chưa có minh chứng.';
+      }
+    } else if (clubReview) {
+      status = clubReview.status || SV5T.REVIEW.PENDING;
+      reason = clubReview.comment || '';
+    } else if (evCount > 0 || (claim && bool_(claim.selected))) {
+      status = SV5T.REVIEW.PENDING;
+      reason = 'Đã nộp/chọn minh chứng, chờ người chấm duyệt.';
+    } else {
+      status = SV5T.REVIEW.PENDING;
+      reason = 'Chưa chọn hoặc chưa có minh chứng.';
+    }
+    return { status: status, reason: reason };
+  }
+
+  function levelFields_(criterionId, level) {
+    var rv = getReviewLevel_(criterionId, level);
+    return {
+      status: rv ? (rv.status || SV5T.REVIEW.PENDING) : SV5T.REVIEW.PENDING,
+      comment: rv ? (rv.comment || '') : '',
+      reviewerUsername: rv ? (rv.reviewerUsername || '') : ''
+    };
+  }
 
   const evidenceCount = {};
   evidences.forEach(function (e) {
@@ -1284,50 +1444,31 @@ function computeApplication_(app) {
     const minOptionPass = Math.max.apply(null, [0].concat(g.items.map(function (i) { return Number(i.minOptionPass || 0); })));
 
     const itemResults = g.items.map(function (item) {
-      let status = SV5T.REVIEW.PENDING;
-      let reason = '';
       const evCount = evidenceCount[item.criterionId] || 0;
       const claim = claimMap[item.criterionId] || null;
-      const review = reviewMap[item.criterionId] || null;
-
-      if (item.itemType === 'REQUIRED_AUTO') {
-        const autoPass = evaluateRule_(item.rule, app);
-        status = autoPass ? SV5T.REVIEW.PASS : SV5T.REVIEW.FAIL;
-        reason = autoPass ? 'Tự động đạt theo dữ liệu hồ sơ.' : 'Chưa đạt theo dữ liệu hồ sơ.';
-      } else if (item.itemType === 'REQUIRED_EVIDENCE') {
-        if (review) {
-          status = review.status || SV5T.REVIEW.PENDING;
-          reason = review.comment || '';
-        } else if (evCount > 0) {
-          status = SV5T.REVIEW.PENDING;
-          reason = 'Đã nộp minh chứng bắt buộc, chờ người chấm duyệt.';
-        } else {
-          status = SV5T.REVIEW.FAIL;
-          reason = 'Tiêu chí bắt buộc chưa có minh chứng.';
-        }
-      } else if (review) {
-        status = review.status || SV5T.REVIEW.PENDING;
-        reason = review.comment || '';
-      } else if (evCount > 0 || (claim && bool_(claim.selected))) {
-        status = SV5T.REVIEW.PENDING;
-        reason = 'Đã nộp/chọn minh chứng, chờ người chấm duyệt.';
-      } else {
-        status = SV5T.REVIEW.PENDING;
-        reason = 'Chưa chọn hoặc chưa có minh chứng.';
-      }
+      const clubReview = getReviewLevel_(item.criterionId, SV5T.REVIEW_LEVEL.CLUB);
+      const base = buildItemReviewFields_(item, clubReview, evCount, claim);
+      const province = levelFields_(item.criterionId, SV5T.REVIEW_LEVEL.PROVINCE);
+      const central = levelFields_(item.criterionId, SV5T.REVIEW_LEVEL.CENTRAL);
 
       return {
         criterionId: item.criterionId,
         groupId: item.groupId,
         itemType: item.itemType,
         label: item.label,
-        status: status,
+        status: base.status,
         evidenceCount: evCount,
         studentSelected: claim ? bool_(claim.selected) : false,
         studentNote: claim ? claim.studentNote : '',
-        reviewerUsername: review ? review.reviewerUsername : '',
-        reviewComment: review ? review.comment : '',
-        reason: reason
+        reviewerUsername: clubReview ? clubReview.reviewerUsername : '',
+        reviewComment: clubReview ? clubReview.comment : '',
+        reason: base.reason,
+        provinceStatus: province.status,
+        provinceComment: province.comment,
+        provinceReviewer: province.reviewerUsername,
+        centralStatus: central.status,
+        centralComment: central.comment,
+        centralReviewer: central.reviewerUsername
       };
     });
 
@@ -1463,6 +1604,8 @@ function uploadEvidenceFiles_(app, user, files) {
   const criteria = getCriteria_();
   const criteriaById = indexBy_(criteria, 'criterionId');
   const maxMb = Number(getConfig_('MAX_FILE_MB', '8'));
+  const maxPdf = Number(getConfig_('MAX_PDF_PER_CRITERION', '5'));
+  const maxImage = Number(getConfig_('MAX_IMAGE_PER_CRITERION', '30'));
   const shareByLink = getConfigBool_('SHARE_EVIDENCE_BY_LINK', true);
   const folder = DriveApp.getFolderById(app.driveFolderId);
   const rows = [];
@@ -1471,10 +1614,32 @@ function uploadEvidenceFiles_(app, user, files) {
     return e.applicationId === app.applicationId;
   });
   const counter = {};
+  const kindCount = {};
   existing.forEach(function (e) {
     const cid = String(e.criterionId || '');
     const order = Number(e.evidenceOrder || 0);
     counter[cid] = Math.max(counter[cid] || 0, order || 0);
+    const kind = normalizeFileKind_(e.fileKind, e.mimeType, e.fileName);
+    kindCount[cid + '|' + kind] = (kindCount[cid + '|' + kind] || 0) + 1;
+  });
+
+  const pendingKindCount = {};
+  files.forEach(function (f) {
+    const criterionId = clean_(f.criterionId);
+    const kind = normalizeFileKind_(f.fileKind, f.mimeType || f.type, f.fileName || f.name);
+    pendingKindCount[criterionId + '|' + kind] = (pendingKindCount[criterionId + '|' + kind] || 0) + 1;
+  });
+  Object.keys(pendingKindCount).forEach(function (key) {
+    const parts = key.split('|');
+    const criterionId = parts[0];
+    const kind = parts[1];
+    const total = (kindCount[key] || 0) + pendingKindCount[key];
+    if (kind === SV5T.FILE_KIND.PDF && total > maxPdf) {
+      throw new Error('Tiêu chí ' + criterionId + ' chỉ được tối đa ' + maxPdf + ' file PDF.');
+    }
+    if (kind === SV5T.FILE_KIND.IMAGE && total > maxImage) {
+      throw new Error('Tiêu chí ' + criterionId + ' vượt quá ' + maxImage + ' ảnh.');
+    }
   });
 
   files.forEach(function (f) {
@@ -1488,17 +1653,20 @@ function uploadEvidenceFiles_(app, user, files) {
     const dataUrl = String(f.base64 || '');
     if (!dataUrl) throw new Error('File minh chứng trống: ' + evidenceTitle);
 
+    const mimeType = f.mimeType || f.type || 'application/octet-stream';
+    const fileKind = normalizeFileKind_(f.fileKind, mimeType, f.fileName || f.name);
+    classifyFileKindStrict_(mimeType, f.fileName || f.name, fileKind);
+
     const base64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',').pop() : dataUrl;
     const bytes = Utilities.base64Decode(base64);
     if (bytes.length > maxMb * 1024 * 1024) throw new Error('File vượt quá ' + maxMb + 'MB: ' + evidenceTitle);
 
     counter[criterionId] = (counter[criterionId] || 0) + 1;
     const evidenceOrder = Number(f.evidenceOrder || counter[criterionId]);
-    const criterionEvidenceNo = clean_(f.criterionEvidenceNo) || (criterionId + '-' + evidenceOrder);
+    const criterionEvidenceNo = clean_(f.criterionEvidenceNo) || (criterionId + '-' + fileKind + '-' + evidenceOrder);
 
     const originalName = sanitizeFileName_(f.fileName || f.name || evidenceTitle);
-    const mimeType = f.mimeType || f.type || 'application/octet-stream';
-    const storedName = criterionId + '_MC' + evidenceOrder + '_' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss') + '_' + originalName;
+    const storedName = criterionId + '_' + fileKind + '_MC' + evidenceOrder + '_' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss') + '_' + originalName;
     const blob = Utilities.newBlob(bytes, mimeType, storedName);
     const file = folder.createFile(blob);
     if (shareByLink) file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -1511,6 +1679,7 @@ function uploadEvidenceFiles_(app, user, files) {
       evidenceOrder: evidenceOrder,
       criterionEvidenceNo: criterionEvidenceNo,
       evidenceTitle: evidenceTitle,
+      fileKind: fileKind,
       fileId: file.getId(),
       fileName: file.getName(),
       fileUrl: file.getUrl(),
@@ -1755,6 +1924,61 @@ function sanitizeFileName_(name) {
     .slice(0, 160);
 }
 
+function normalizeReviewLevel_(level) {
+  level = clean_(level).toUpperCase() || SV5T.REVIEW_LEVEL.CLUB;
+  if (level === SV5T.REVIEW_LEVEL.PROVINCE || level === SV5T.REVIEW_LEVEL.CENTRAL) return level;
+  return SV5T.REVIEW_LEVEL.CLUB;
+}
+
+function reviewLevelLabel_(level) {
+  if (level === SV5T.REVIEW_LEVEL.PROVINCE) return 'Cấp Tỉnh';
+  if (level === SV5T.REVIEW_LEVEL.CENTRAL) return 'Cấp Trung ương';
+  return 'Cấp CLB';
+}
+
+function reviewStatusLabel_(status) {
+  if (status === SV5T.REVIEW.PASS) return 'Đạt';
+  if (status === SV5T.REVIEW.FAIL) return 'Không đạt';
+  if (status === SV5T.REVIEW.NEED_MORE) return 'Cần bổ sung';
+  if (status === SV5T.REVIEW.PENDING) return 'Chờ duyệt';
+  return String(status || '');
+}
+
+function findReview_(reviews, applicationId, criterionId, reviewLevel) {
+  reviewLevel = normalizeReviewLevel_(reviewLevel);
+  return reviews.find(function (r) {
+    return r.applicationId === applicationId
+      && r.criterionId === criterionId
+      && normalizeReviewLevel_(r.reviewLevel) === reviewLevel;
+  }) || null;
+}
+
+function normalizeFileKind_(fileKind, mimeType, fileName) {
+  var kind = clean_(fileKind).toUpperCase();
+  if (kind === SV5T.FILE_KIND.PDF || kind === SV5T.FILE_KIND.IMAGE) return kind;
+  mimeType = String(mimeType || '').toLowerCase();
+  fileName = String(fileName || '').toLowerCase();
+  if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) return SV5T.FILE_KIND.PDF;
+  if (mimeType.indexOf('image/') === 0) return SV5T.FILE_KIND.IMAGE;
+  return SV5T.FILE_KIND.PDF;
+}
+
+function classifyFileKindStrict_(mimeType, fileName, fileKind) {
+  mimeType = String(mimeType || '').toLowerCase();
+  fileName = String(fileName || '').toLowerCase();
+  if (fileKind === SV5T.FILE_KIND.PDF) {
+    if (mimeType !== 'application/pdf' && !fileName.endsWith('.pdf')) {
+      throw new Error('Khu vực PDF chỉ chấp nhận file .pdf');
+    }
+    return;
+  }
+  if (fileKind === SV5T.FILE_KIND.IMAGE) {
+    if (mimeType.indexOf('image/') !== 0) {
+      throw new Error('Khu vực ảnh chỉ chấp nhận JPG, PNG, WEBP, GIF...');
+    }
+  }
+}
+
 function getOrCreateChildFolder_(parent, name) {
   const it = parent.getFoldersByName(name);
   return it.hasNext() ? it.next() : parent.createFolder(name);
@@ -1798,6 +2022,13 @@ function clearSheetData_(sheetName) {
 /***********************
  * RESET / ADMIN MAINTENANCE
  ***********************/
+function capNhatCauHinhMinhChung_SV5T() {
+  ensureSetup_();
+  setConfig_('MAX_PDF_PER_CRITERION', '5', 'Tối đa PDF mỗi tiêu chí');
+  setConfig_('MAX_IMAGE_PER_CRITERION', '30', 'Tối đa ảnh mỗi tiêu chí');
+  return { ok: true, message: 'Đã cập nhật cấu hình minh chứng PDF/ảnh.' };
+}
+
 function capNhatTenDonVi_CLB_SV5T() {
   ensureSetup_();
   setConfig_('APP_TITLE', 'Hệ thống xét Sinh viên 5 tốt', 'Tiêu đề hiển thị');
